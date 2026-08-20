@@ -1,0 +1,130 @@
+spring:
+  application:
+    name: exati-itg
+  profiles:
+    active: dev
+
+  datasource:
+    url:      jdbc:h2:mem:exati-itg;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password: ""
+    driver-class-name: org.h2.Driver
+
+  h2:
+    console:
+      enabled: true
+      path:    /h2-console
+
+  jpa:
+    # Flyway is the source of truth for the schema; Hibernate must not touch DDL.
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql:   true
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled:   true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  mvc:
+    problemdetails:
+      enabled: true
+
+server:
+  port: 8080
+  error:
+    include-message:       always
+    include-binding-errors: always
+  compression:
+    enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  info:
+    git:
+      mode: full
+    env:
+      enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter:       alpha
+
+info:
+  app:
+    name:        ${spring.application.name}
+    description: Exati ITG REST API
+    version:     0.0.1-SNAPSHOT
+
+app:
+  jwt:
+    # Override in production via APP_JWT_SECRET. Must be ≥ 32 bytes (256 bits) for HS256.
+    secret:             ${APP_JWT_SECRET:change-me-in-production-this-is-a-development-only-secret-please}
+    expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:60}
+
+# Outbound Exati IoT Hub (TALQ Tier 1) client.
+exati:
+  base-url:    ${EXATI_BASE_URL:https://iot.exati.com.br/staging}
+  id-instance: ${EXATI_ID_INSTANCE:69}
+  # Optional TALQ sender UUID sent as ?clientAddress= on Tier 2 calls.
+  client-address: ${EXATI_CLIENT_ADDRESS:}
+  auth:
+    # none | bearer | apikey — the published Tier 1 spec declares no auth;
+    # switch this once Exati confirms the real production scheme.
+    type:        ${EXATI_AUTH_TYPE:none}
+    token:       ${EXATI_AUTH_TOKEN:}
+    header-name: ${EXATI_AUTH_HEADER:X-Api-Key}
+    api-key:     ${EXATI_AUTH_KEY:}
+  timeout:
+    connect-ms: ${EXATI_CONNECT_TIMEOUT_MS:5000}
+    read-ms:    ${EXATI_READ_TIMEOUT_MS:10000}
+
+# TALQ gateway SERVER (CMS → gateway callbacks, spec 2.6.3 gateway OAS).
+# These values MUST mirror the bootstrap announcement recorded in homolog/ —
+# the certifier audits both sides against each other.
+talq:
+  server:
+    # Identity announced 2026-08-20 (product "Gateway homolog2", token 9yTZ…).
+    # gateway-uri: Pinggy free tunnel — URL ROTATES on every tunnel restart; update
+    # here AND re-PATCH the announced gatewayUri (homolog/README.md). Never announce
+    # gateway-homolog.nansen.com.br — no DNS exists for it (decision A4 pending).
+    gateway-address: ${TALQ_GATEWAY_ADDRESS:6df4b4cd-da48-4448-bfd7-bba3f5216bf2}
+    cms-address:     ${TALQ_CMS_ADDRESS:10000000-0000-0000-0000-000000000001}
+    gateway-uri:     ${TALQ_GATEWAY_URI:https://olmti-200-169-6-125.free.pinggy.net/}
+    cms-uri:         ${TALQ_CMS_URI:https://iotcertifier.exati.com.br:8443/cms/9yTZDDpe4H13mObY6AkfXnIxBGdOdfXxOqNawjg235Y/}
+    vendor:          ${TALQ_VENDOR:Nansen}
+    crl-urn:         ${TALQ_CRL_URN:https://olmti-200-169-6-125.free.pinggy.net/crl/nansen-ca-homolog.crl}
+    # Announced service limits (POST /services is one-shot; keep in sync).
+    limits:
+      maximum-calendars:              10
+      maximum-programs:               20
+      max-programs-per-calendar:      10
+      max-switch-points-per-program:  10
+      max-active-periods-per-program: 4
+      maximum-number-of-groups:       50
+      maximum-group-size:             500
+      maximum-data-logs:              10
+
+# Outbound CIM gateway (external ami-cim microservice) — transparent proxy target.
+# base-url includes the gateway REST prefix; default is ami-cim direct (:18084).
+# Point at ami-zuul (:18088) or another host via CIM_BASE_URL.
+cim:
+  base-url: ${CIM_BASE_URL:http://localhost:18084/ami/cim}
+  timeout:
+    connect-ms: ${CIM_CONNECT_TIMEOUT_MS:5000}
+    read-ms:    ${CIM_READ_TIMEOUT_MS:30000}

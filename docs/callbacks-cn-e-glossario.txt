@@ -1,0 +1,262 @@
+===============================================================================
+ TALQ / EXATI - NOMENCLATURA DE CERTIFICADOS, LIVENESS, ROTAS DE CALLBACK
+ E GLOSSARIO
+===============================================================================
+ Arquivo em texto puro (sem markdown).
+ Fontes: TALQ Specification 2.6.3, talq-api-gateway-2-6-3-online.json,
+         handshake TLS real contra iotcertifier.exati.com.br:8443
+
+
+-------------------------------------------------------------------------------
+ 1. POR QUE O CN E UM NOME NA CA E UM HOSTNAME NO LEAF
+-------------------------------------------------------------------------------
+
+Nao e inconsistencia. Sao dois papeis diferentes:
+
+                        CN DA CA                 CN/SAN DO LEAF
+  ------------------------------------------------------------------------
+  Valor exemplo         Nansen Gateway CA        gateway-01.nansen.com.br
+  Funcao                rotulo humano do         identidade de rede
+                        emissor                  verificavel
+  Resolvido em DNS?     NUNCA                    SIM
+  Validado contra que?  nada - so aparece        o host da conexao TLS
+                        como "issuer" na
+                        cadeia
+
+A CA nunca e alvo de conexao, entao o nome dela e livre: serve para voce
+reconhecer quem assinou o certificado.
+
+O leaf E alvo de conexao. Quando o CMS chama
+
+    https://<gatewayUri>/devices?clientAddress=<cmsAddress>
+
+o cliente TLS compara o host dessa URL com o subjectAltName do certificado
+apresentado. Se nao bater, a conexao falha ANTES de qualquer requisicao HTTP.
+
+Por isso o CN da CA pode ser uma frase, e o do gateway tem que ser exatamente
+o hostname que anunciamos no gatewayUri.
+
+Observacao: validadores modernos IGNORAM o campo CN e olham somente o SAN.
+O CN e mantido por compatibilidade historica. Sempre preencha o SAN.
+
+O mesmo padrao aparece na tela de Certificados da EXATI:
+
+    CA Raiz       -> CN = "Vendor Certifier CA"          (nome)
+    Servidor TLS  -> CN = "iotcertifier.exati.com.br"    (hostname)
+
+Confirmado no handshake que o segundo e emitido pelo primeiro:
+
+    subject = C=BR, ST=Parana, L=Curitiba, O=Exati, OU=IoT,
+              CN=iotcertifier.exati.com.br
+    issuer  = C=BR, ST=Parana, L=Curitiba, O=Exati, OU=IoT,
+              CN=Vendor Certifier CA
+    SAN     = DNS:iotcertifier.exati.com.br
+    EKU     = TLS Web Server Authentication
+    notAfter= Apr 6 18:01:10 2036 GMT
+
+
+-------------------------------------------------------------------------------
+ 2. LIVENESS NO TALQ: NAO HA SONDA DEDICADA, MAS HA CONTRATO DE TIMEOUT/RETRY
+-------------------------------------------------------------------------------
+
+DEFINICAO IMPORTA. Se "liveness" = endpoint ou mensagem periodica cuja unica
+funcao e dizer "estou vivo", entao o TALQ NAO TEM. Pesquisado no texto integral
+da spec (64 das 66 paginas): zero ocorrencias de alive, heartbeat, keepalive,
+health, liveness, ping, watchdog. Nao existe /health nem /ping.
+
+MAS o TALQ ESPECIFICA um contrato de deteccao de falha e retry, nas duas
+direcoes, como ATRIBUTOS DA GatewayFunction. Isso e o que se usa na pratica
+para construir deteccao de indisponibilidade:
+
+  gatewayRetryPeriod       Segundos antes do GATEWAY retransmitir mensagem cuja
+                           resposta esperada nao chegou.
+  cmsRetryPeriod           Idem para o CMS.
+  gatewayNumberOfRetries   Maximo de retries do gateway. DEFAULT = 3.
+  cmsNumberOfRetries       Maximo de retries do CMS. DEFAULT = 3.
+  retryPeriod              DEPRECADO desde 2.5.0 -> usar gatewayRetryPeriod.
+
+  ARMADILHA: o atributo DEPRECADO (retryPeriod) e mandatory-gw=TRUE, enquanto
+  o substituto (gatewayRetryPeriod) e opcional em todos os perfis. Ou seja:
+  para conformidade 2.6.3 ainda e o deprecado que e exigido do gateway.
+
+  Proposito declarado na spec: "can be used by the CMS to avoid requests
+  overload" - e negociacao de backpressure, nao sonda de liveness. Mas define
+  o timeout a partir do qual cada lado conclui que a requisicao falhou.
+
+  CONSEQUENCIA PRATICA: como sao ATRIBUTOS ANUNCIADOS, nao precisamos perguntar
+  a EXATI qual o timeout/retry deles - o protocolo preve que o CMS exponha
+  cmsRetryPeriod e cmsNumberOfRetries. Basta ler.
+
+SINAIS INDIRETOS DE VIDA (nao sao mecanismos dedicados, mas funcionam):
+
+  Log reports agendados    O gateway faz POST em horarios programados. Se os
+  (secao 5.5)              reports param de chegar, o CMS INFERE problema.
+                           Heartbeat implicito. Porem: se o CMS nao dá ACK, o
+                           gateway retransmite apenas no PROXIMO horario
+                           agendado, em lote - nao imediatamente.
+
+  Qualquer GET             O CMS pode sondar GET /services ou /devices/count
+                           como probe barato. Nao e mecanismo definido, e como
+                           se implementaria um.
+
+  communicationQuality     Metrica de performance de rede na
+  (CommunicationFunction)  CommunicationFunction, nivel gateway.
+
+  communicationFailure     Existe em DUAS camadas: na CommunicationFunction
+                           (nivel gateway/ODN) e via Basic function (nivel
+                           dispositivo). E o gateway reportando que algo da ODN
+                           nao responde - nao o CMS testando o gateway.
+
+  Resync flows             Recuperacao, nao deteccao. CMS apaga o
+  (secao 5.1, p.44)        gateway-como-device -> gateway limpa e reinicia o
+                           bootstrap. E o inverso. Ambos obrigatorios.
+
+  HTTP keep-alive          Reuso de conexao TCP, motivo declarado para exigir
+  (secao 3.5)              HTTP/1.1. TRANSPORTE, nao liveness de aplicacao.
+
+EM ABERTO: se o dashboard do certifier faz alguma sonda de alcancabilidade no
+gatewayUri antes ou durante o bootstrap, isso e comportamento proprio da EXATI
+e nao esta documentado. Perguntar.
+
+
+-------------------------------------------------------------------------------
+ 3. ROTAS QUE O CMS VAI CHAMAR NO NOSSO GATEWAY
+-------------------------------------------------------------------------------
+
+Fonte: talq-api-gateway-2-6-3-online.json - 44 paths.
+Todas em: https://<gatewayUri>/<rota>?clientAddress=<cmsAddress>
+
+Esta e a superficie que precisamos implementar COMO SERVIDOR.
+
+DISPOSITIVOS E CLASSES
+  GET,PATCH,POST,PUT   /devices
+  GET                  /devices/count
+  DELETE,GET,PATCH     /devices/{deviceAddress}
+  GET,PATCH            /devices/{deviceAddress}/{functionId}
+  GET,PATCH            /devices/{deviceAddress}/{functionId}/{attributeName}
+  GET                  /device-classes
+  GET                  /device-classes/count
+  GET                  /device-classes/{className}
+
+CONTROLE E OVERRIDE
+  POST                 /override-commands
+  GET,POST             /assign-commands
+  GET,POST,PUT         /control-programs
+  GET                  /control-programs/count
+  DELETE,GET,PUT       /control-programs/{controlProgramAddress}
+  GET,POST,PUT         /calendars
+  GET                  /calendars/count
+  DELETE,GET,PUT       /calendars/{calendarAddress}
+
+GRUPOS
+  GET,POST,PUT         /groups
+  GET                  /groups/count
+  DELETE,GET,PUT       /groups/{groupAddress}
+  PUT                  /groups/{groupAddress}/members
+  GET                  /groups/{groupAddress}/members/count
+  DELETE               /groups/{groupAddress}/members/{memberResource}/{memberAddress}
+
+TIPOS DE ATIVO  (cada um tambem com /count [GET] e /{address} [DELETE,GET,PUT])
+  GET,POST,PUT         /lamp-types          <- DEPRECADO (secao 4.5)
+  GET,POST,PUT         /luminaire-types
+  GET,POST,PUT         /bracket-types
+  GET,POST,PUT         /driver-types
+  GET,POST,PUT         /controller-types
+
+LOGGING
+  POST                 /logger-configs
+  DELETE,GET,PUT       /logger-configs/{loggerAddress}
+  GET                  /log-reports/count
+  GET                  /log-reports/{loggerAddress}
+
+FIRMWARE E SERVICOS
+  GET,PUT              /data-packages       <- PUT retorna 204 (secao 5.9)
+  GET                  /services
+  GET                  /services/{serviceName}
+
+
+PONTOS QUE MUDAM A IMPLEMENTACAO
+--------------------------------
+
+* O ANUNCIO E ASSIMETRICO. No bootstrap NOS fazemos POST /device-classes e
+  POST /devices no CMS. Do nosso lado, /device-classes aceita somente GET - o
+  CMS consulta o que anunciamos, nao cria classes em nos.
+
+* PATCH NAO REMOVE FUNCOES. So adiciona ou atualiza por "id". Para remover,
+  o CMS precisa usar PUT com a lista completa reduzida (secao 3.4, p.17-18).
+
+* PUT EM /devices E DESTRUTIVO no array de funcoes: substitui a definicao
+  inteira e apaga as funcoes ausentes da requisicao.
+
+* REJEICAO DE REQUISICAO INTEIRA em erro parcial: se um PUT/PATCH em lote tem
+  um item invalido, a requisicao TODA e rejeitada. Nao existe sucesso parcial
+  (secao 3.4, p.18).
+
+* /data-packages PUT retorna 204 e o processo de firmware e assincrono - o
+  progresso volta por eventos, nao por resposta sincrona (secao 5.9, p.63).
+
+* DIMENSIONAMENTO: 44 rotas como servidor e bem mais trabalho do que o lado
+  cliente do bootstrap. Planejar separadamente.
+
+
+-------------------------------------------------------------------------------
+ 4. GLOSSARIO - O QUE E ODN E OS TERMOS RELACIONADOS
+-------------------------------------------------------------------------------
+
+ODN = OUTDOOR DEVICE NETWORK  ("rede de dispositivos externos")
+
+Definicao literal da spec (secao 1.6, glossario):
+
+    "Outdoor Device Network (ODN): A network of connected physical devices
+     (e.g. Light Point Controllers, Waste Container Sensors, Parking Place
+     Detectors, Air Pollution Sensors, etc.)."
+
+Ou seja: e a rede de campo. No nosso caso de iluminacao publica, a ODN e o
+conjunto de controladores de ponto de luz e a rede de radio/PLC que os conecta.
+
+Termos correlatos, tambem literais da spec:
+
+    CMS (Central Management Software)
+    "An application which communicates with ODNs to enable remote
+     configuration, control, command and monitoring of smart city connected
+     devices."
+    -> No nosso contexto: o IoT Hub / iotcertifier da EXATI.
+
+    Gateway
+    "An application that provides access to ODN devices using the TALQ Smart
+     City Protocol."
+    -> E o que NOS implementamos. Traduz entre o CMS (TALQ/REST) e a ODN
+       (protocolo proprietario).
+
+    Device
+    "A logical representation of a physical device that is controlled and
+     managed by the CMS using the TALQ Smart City Protocol. A device implements
+     a set of functions and is uniquely identifiable within the ODN."
+    -> Note: o vendor pode usar MAIS DE UM device para descrever um
+       dispositivo fisico, ou agrupar VARIOS dispositivos fisicos em um unico
+       device. A relacao nao e obrigatoriamente 1:1.
+
+
+POR QUE O TERMO IMPORTA NA PRATICA
+----------------------------------
+
+A fronteira do TALQ e exatamente a linha CMS <-> Gateway. Tudo que acontece
+DENTRO da ODN esta fora do escopo da especificacao. Duas consequencias
+concretas:
+
+  * SEGURANCA DA ODN E RESPONSABILIDADE NOSSA (secao 3.6, p.22):
+    "Security within the ODN is outside the scope of the TALQ Specification
+     and is the responsibility of the ODN supplier."
+    O TALQ para no Gateway. Nao espere que a spec dite seguranca fim-a-fim.
+
+  * NAO EXISTE REGISTRO DE TIPOS DE DISPOSITIVO (secao 4.1, p.23):
+    Cada fornecedor compoe suas proprias device classes a partir das FUNCOES
+    TALQ - e as funcoes sim sao canonicas. Uma "Light Point Controller" da
+    Nansen e a de outro fornecedor podem ter conjuntos de funcao totalmente
+    diferentes. O CMS aprende cada classe pelo anuncio no bootstrap.
+
+  * O evento communicationFailure e justamente o sinal de que um device da ODN
+    ficou inacessivel - e a unica visibilidade que o CMS tem do que acontece
+    la dentro.
+
+===============================================================================

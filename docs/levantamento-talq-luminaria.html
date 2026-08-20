@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Levantamento TALQ — Funções do ZENIX (SIP)</title>
+<style>*,*::before,*::after{box-sizing:border-box}html{-webkit-text-size-adjust:100%}body{margin:0}img,svg{max-width:100%}button,input,select,textarea{font:inherit}</style>
+</head>
+<body>
+<style>
+  :root{
+    --ground:#F6F4EF; --surface:#FFFFFF; --surface-2:#FBF9F5; --surface-3:#F1EDE5;
+    --ink:#1B1917; --ink-2:#443F39; --muted:#6E6862;
+    --line:#E2DCD2; --line-2:#D2CABD;
+    --accent:#A9550D; --accent-soft:#F3E4D2; --accent-ink:#FFFFFF;
+    --req:#175A72; --req-soft:#DCEDF3;
+    --focus:#A9550D;
+    --shadow:0 1px 2px rgba(27,25,23,.06), 0 8px 24px -16px rgba(27,25,23,.28);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#15171C; --surface:#1D2027; --surface-2:#22262E; --surface-3:#282D36;
+      --ink:#EAE7E1; --ink-2:#C6C1B9; --muted:#948F88;
+      --line:#2C313A; --line-2:#3A404A;
+      --accent:#E8964A; --accent-soft:#3A2A18; --accent-ink:#1A1409;
+      --req:#6FB6CF; --req-soft:#12313C;
+      --focus:#E8964A;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#15171C; --surface:#1D2027; --surface-2:#22262E; --surface-3:#282D36;
+    --ink:#EAE7E1; --ink-2:#C6C1B9; --muted:#948F88;
+    --line:#2C313A; --line-2:#3A404A;
+    --accent:#E8964A; --accent-soft:#3A2A18; --accent-ink:#1A1409;
+    --req:#6FB6CF; --req-soft:#12313C;
+    --focus:#E8964A;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.8);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--ground); color:var(--ink);
+    font:16px/1.6 -apple-system,"Segoe UI",system-ui,Roboto,sans-serif; -webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px; margin:0 auto; padding:0 20px 96px}
+
+  .masthead{padding:56px 0 28px; border-bottom:1px solid var(--line)}
+  .eyebrow{font:600 11px/1 ui-monospace,"Cascadia Code",Consolas,monospace;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 14px}
+  h1{font-family:Georgia,"Iowan Old Style","Times New Roman",serif; font-weight:400;
+    font-size:clamp(30px,4.4vw,44px); line-height:1.12; letter-spacing:-.01em; margin:0 0 14px; text-wrap:balance}
+  .lede{max-width:64ch; color:var(--ink-2); font-size:17px; margin:0 0 12px}
+  .note{margin-top:22px; padding:14px 16px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 6px 6px 0; font-size:14.5px; color:var(--ink-2)}
+  .note strong{color:var(--ink)}
+
+  .statusbar{position:sticky; top:0; z-index:20; background:var(--ground);
+    border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:8px 18px;
+    align-items:center; padding:11px 0; font-size:13px}
+  .stat{display:flex; align-items:baseline; gap:6px; color:var(--muted)}
+  .stat b{font:600 15px/1 ui-monospace,Consolas,monospace; color:var(--ink); font-variant-numeric:tabular-nums}
+  .statusbar .spacer{flex:1}
+
+  section{padding-top:46px}
+  .sec-tag{font:600 10.5px/1 ui-monospace,Consolas,monospace; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--accent-ink); background:var(--accent);
+    padding:5px 8px; border-radius:4px; display:inline-block}
+  .sec-tag.alt{background:var(--req-soft); color:var(--req)}
+  .sec-meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:11px}
+  .route{display:inline-flex; align-items:center; gap:7px; flex-wrap:wrap;
+    font:600 11.5px/1 ui-monospace,Consolas,monospace; background:var(--surface-2);
+    border:1px solid var(--line-2); border-radius:4px; padding:5px 9px; color:var(--ink-2)}
+  .route .m{color:var(--accent)}
+  .route .f{color:var(--muted); font-weight:400}
+  .route.none{color:var(--muted); font-weight:400; font-family:inherit; font-size:12.5px}
+  h2{font-family:Georgia,"Iowan Old Style",serif; font-weight:400; font-size:25px;
+    letter-spacing:-.01em; margin:0 0 6px}
+  .sec-sub{color:var(--muted); font-size:14.5px; margin:0 0 22px; max-width:64ch}
+  h3{font-size:13.5px; font-weight:650; letter-spacing:.02em; margin:24px 0 9px}
+
+  .grid{display:grid; gap:13px; grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}
+  label.field{display:flex; flex-direction:column; gap:5px}
+  .field > span{font-size:12px; font-weight:600; color:var(--muted); letter-spacing:.02em}
+  input[type=text],input[type=number],textarea,select{font:inherit; font-size:15px; color:var(--ink);
+    background:var(--surface); border:1px solid var(--line-2); border-radius:7px; padding:9px 11px; width:100%}
+  input[type=number]{font-family:ui-monospace,Consolas,monospace; font-variant-numeric:tabular-nums}
+  textarea{min-height:92px; resize:vertical; line-height:1.55}
+  :focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+
+  .cards{display:grid; gap:10px}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:9px;
+    box-shadow:var(--shadow); overflow:hidden}
+  .card-head{display:flex; align-items:flex-start; gap:11px; padding:13px 15px; cursor:pointer}
+  .card-head:hover{background:var(--surface-2)}
+  .card.on{border-color:var(--accent)}
+  .card.on > .card-head{background:var(--accent-soft)}
+  .card-title{flex:1; min-width:0}
+  .card-title .t{font:600 14.5px/1.35 ui-monospace,Consolas,monospace; word-break:break-word}
+  .card-title .s{display:block; font-size:13px; color:var(--muted); margin-top:3px; font-weight:400}
+  .card-meta{font:500 11.5px/1 ui-monospace,Consolas,monospace; color:var(--muted);
+    white-space:nowrap; padding-top:4px; font-variant-numeric:tabular-nums}
+
+  input[type=checkbox]{appearance:none; flex:0 0 auto; width:18px; height:18px; margin:2px 0 0;
+    border:1.5px solid var(--line-2); border-radius:4px; background:var(--surface); cursor:pointer; position:relative}
+  input[type=checkbox]:checked{background:var(--accent); border-color:var(--accent)}
+  input[type=checkbox]:checked::after{content:""; position:absolute; left:5px; top:1.5px; width:4px; height:9px;
+    border:solid var(--accent-ink); border-width:0 2px 2px 0; transform:rotate(42deg)}
+
+  .card-body{display:none; border-top:1px solid var(--line); padding:4px 15px 16px}
+  .card.open > .card-body{display:block}
+  .bulk{display:flex; gap:8px; padding:12px 0 6px; flex-wrap:wrap}
+  .mini{font:500 12px/1 inherit; color:var(--ink-2); background:var(--surface-2);
+    border:1px solid var(--line-2); border-radius:5px; padding:6px 10px; cursor:pointer}
+  .mini:hover{border-color:var(--accent); color:var(--accent)}
+
+  .items{list-style:none; margin:0; padding:0; display:grid; gap:1px;
+    background:var(--line); border:1px solid var(--line); border-radius:7px; overflow:hidden}
+  .item{background:var(--surface); padding:9px 12px}
+  .item.locked{background:var(--req-soft)}
+  .item.locked .item-name{color:var(--ink-2); cursor:default}
+  input[type=checkbox]:disabled{background:var(--req); border-color:var(--req); cursor:not-allowed}
+  input[type=checkbox]:disabled::after{border-color:var(--req-soft)}
+  .lock{font:600 11px/1 inherit; color:var(--req); white-space:nowrap; margin-top:3px}
+  .item-row{display:flex; align-items:flex-start; gap:10px}
+  .item-name{flex:1; min-width:0; font:13.5px/1.45 ui-monospace,Consolas,monospace;
+    word-break:break-word; cursor:pointer; background:none; border:0; color:var(--ink); text-align:left; padding:0}
+  .badge{font:600 10px/1 ui-monospace,Consolas,monospace; letter-spacing:.06em;
+    padding:4px 6px; border-radius:4px; white-space:nowrap; margin-top:1px}
+  .badge.m{background:var(--req-soft); color:var(--req)}
+  .badge.n{background:var(--accent-soft); color:var(--accent)}
+  .info{flex:0 0 auto; width:22px; height:22px; border-radius:5px; cursor:pointer;
+    border:1px solid var(--line-2); background:var(--surface-2); color:var(--muted);
+    font:600 12px/1 Georgia,serif; display:grid; place-items:center}
+  .info[aria-expanded="true"]{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+  .desc{display:none; margin:8px 0 2px 28px; padding:11px 13px; font-size:13.5px; line-height:1.6;
+    color:var(--ink-2); background:var(--surface-2); border-left:2px solid var(--accent); border-radius:0 5px 5px 0}
+  .desc.show{display:block}
+  .desc em{color:var(--muted); font-style:normal; font-size:12.5px; display:block; margin-top:5px}
+  .desc p{margin:0 0 10px}
+  .desc p:last-child{margin-bottom:0}
+  .meta-grid{display:grid; grid-template-columns:auto 1fr; gap:4px 12px; margin:10px 0 0;
+    padding-top:10px; border-top:1px solid var(--line); font-size:12.5px}
+  .meta-grid dt{font:600 11px/1.5 ui-monospace,Consolas,monospace; letter-spacing:.06em;
+    text-transform:uppercase; color:var(--muted)}
+  .meta-grid dd{margin:0; color:var(--ink-2)}
+  .meta-grid dd b{font-weight:650; color:var(--ink)}
+  .warn{margin:10px 0 0; padding:8px 11px; border-radius:5px; font-size:12.5px; line-height:1.5;
+    background:var(--accent-soft); color:var(--accent); border:1px solid var(--accent)}
+  .tip{margin:10px 0 0; padding:8px 11px; border-radius:5px; font-size:13px; line-height:1.55;
+    background:var(--req-soft); color:var(--req)}
+  .tip b{font-weight:650}
+
+  /* painel aninhado dentro do atributo */
+  .detail{display:none; margin:9px 0 3px 28px; padding:13px 14px; background:var(--surface-3);
+    border:1px solid var(--line-2); border-radius:7px}
+  .detail.show{display:block}
+  .detail > .dt{font:600 11px/1 ui-monospace,Consolas,monospace; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 10px}
+  .detail + .detail{margin-top:8px}
+  .rng{display:flex; gap:8px; align-items:flex-end; flex-wrap:wrap; margin-bottom:8px}
+  .rng label{flex:1 1 92px}
+  .chips{display:flex; flex-wrap:wrap; gap:6px}
+  .chip{display:inline-flex; align-items:center; gap:6px; font:12.5px/1 inherit;
+    background:var(--surface); border:1px solid var(--line-2); border-radius:20px;
+    padding:7px 11px 7px 8px; cursor:pointer}
+  .chip input{width:14px; height:14px; margin:0}
+  .chip.on{border-color:var(--accent); background:var(--accent-soft); color:var(--accent)}
+  .hint{font-size:12.5px; color:var(--muted); margin:8px 0 0; line-height:1.5}
+
+  .vend{margin-top:8px}
+  .vrow{display:grid; gap:8px; grid-template-columns:1.4fr 1fr 1fr auto; align-items:end; margin-bottom:8px}
+  @media(max-width:640px){.vrow{grid-template-columns:1fr 1fr}}
+  .del{border:1px solid var(--line-2); background:var(--surface-2); color:var(--muted);
+    border-radius:6px; padding:9px 11px; cursor:pointer; font:600 13px/1 inherit}
+  .del:hover{border-color:var(--accent); color:var(--accent)}
+
+  .actions{display:flex; gap:10px; flex-wrap:wrap; margin:20px 0 16px}
+  .btn{font:600 14px/1 inherit; padding:11px 18px; border-radius:7px; cursor:pointer;
+    border:1px solid var(--accent); background:var(--accent); color:var(--accent-ink)}
+  .btn.ghost{background:transparent; color:var(--accent)}
+  .btn:hover{filter:brightness(1.06)}
+  #out{font:13px/1.5 ui-monospace,Consolas,monospace; min-height:260px; white-space:pre; overflow-x:auto}
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line); font-size:13px; color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important; animation:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Nansen · TALQ 2.6.3</p>
+    <h1>Integração EXATI — Parametrização de dispositivos</h1>
+    <p class="lede">Precisamos declarar ao CMS da EXATI, de forma definitiva, quais funções, atributos e eventos o nosso equipamento suporta. Quem conhece o produto é você — este formulário transforma esse conhecimento na declaração técnica.</p>
+    <p class="lede">Marque apenas o que o equipamento <strong>entrega hoje</strong>. Ao final, gere o resumo e devolva para a equipe de integração.</p>
+    <div class="note">
+      <strong>Por que o "hoje" importa tanto:</strong> pela especificação TALQ, uma classe de dispositivo pode <em>ganhar</em> atributos depois, mas <strong>nunca perder</strong>. Remover algo declarado exige criar uma classe nova e remigrar os dispositivos. Declarar a mais "por garantia" é o erro caro; declarar de menos se corrige em minutos.
+    </div>
+    <div class="note" style="border-left-color:var(--req)">
+      <strong>O formulário produz duas declarações diferentes.</strong> As seções marcadas <span class="sec-tag" style="margin:0">Device Class</span> descrevem o modelo do equipamento. A seção marcada <span class="sec-tag alt" style="margin:0">Serviços</span> é outra coisa: são as capacidades do gateway como um todo, enviadas numa requisição separada. Estão juntas aqui só porque dependem do mesmo conhecimento.
+    </div>
+    <div class="note">
+      <strong>Sobre os termos usados aqui:</strong> o equipamento levantado é o <strong>ZENIX (SIP)</strong> — na TALQ ele faz o papel de controlador do ponto de iluminação (OLC). "Luminária" aparece só quando o assunto é a lâmpada física que ele acende, apaga ou dimeriza. E <strong>"gateway" significa sempre o gateway TALQ</strong> — o software de integração da Nansen com o CMS da EXATI — e nunca o produto Gateway G1/G2 (DCU / concentrador / access point).
+    </div>
+  </header>
+
+  <div class="statusbar">
+    <span class="stat">Funções <b id="c-fn">0</b></span>
+    <span class="stat">Atributos <b id="c-at">0</b></span>
+    <span class="stat">Eventos <b id="c-ev">0</b></span>
+    <span class="stat">Vendor <b id="c-vd">0</b></span>
+    <span class="spacer"></span>
+    <button class="mini" id="jump">Ir para o resumo ↓</button>
+  </div>
+
+  <section>
+    <div class="sec-meta"><span class="route none">não vai para o protocolo — controle interno do levantamento</span></div>
+    <h2>1. Quem está preenchendo</h2>
+    <p class="sec-sub">Para sabermos a quem voltar em caso de dúvida sobre uma escolha.</p>
+    <div class="grid">
+      <label class="field"><span>Nome</span><input type="text" id="f-nome" value="Ayres Henrique" placeholder="Seu nome"></label>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-meta">
+      <span class="sec-tag">Device Class</span>
+      <span class="route"><span class="m">POST</span> /device-classes <span class="f">→ name</span></span>
+    </div>
+    <h2>2. Identificação da classe</h2>
+    <p class="sec-sub">Uma classe descreve um modelo de equipamento. Todos os dispositivos (ZENIX) daquele modelo apontam para ela pelo nome informado aqui.</p>
+    <div class="note" style="margin:0 0 20px; border-left-color:var(--req)">
+      <strong>O cadastro dos dispositivos em si não está neste formulário.</strong> Ele acontece em <code>POST /devices</code>, alimentado pela base da plataforma AMI — cada ZENIX só carrega endereço, nome e o nome desta classe. Tudo que descreve <em>o que ela sabe fazer</em> vem daqui.
+    </div>
+    <div class="grid">
+      <label class="field"><span>Nome da classe</span><input type="text" id="f-classe" placeholder="ex.: NansenLightPointController"></label>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-meta">
+      <span class="sec-tag">Device Class</span>
+      <span class="route"><span class="m">POST</span> /device-classes <span class="f">→ functions[ ].attributes[ ] · events[ ] · vendorAttributes[ ]</span></span>
+    </div>
+    <h2>3. Funções, atributos e eventos</h2>
+    <p class="sec-sub">Abra cada função e marque o que o equipamento suporta. Os itens com selo <span class="badge m" style="display:inline-block">OBRIG</span> 🔒 já vêm <strong>marcados e travados</strong>: são exigidos pelo perfil <em>lighting</em> e vêm com a descrição e o detalhamento abertos. O selo <span class="badge n" style="display:inline-block">DETALHE</span> indica sub-informação a preencher, que aparece ao marcar. Use o botão <span style="font-family:Georgia,serif;font-weight:600">i</span> para ler o que cada item significa.</p>
+    <div class="note" style="margin:0 0 14px; border-left-color:var(--req)">
+      <strong>A obrigatoriedade é condicional.</strong> No perfil <em>lighting</em>, <strong>nenhuma função é obrigatória por si só</strong> — todas as dez são opcionais para o gateway. O que os itens travados significam é: <em>se você declarar esta função, estes itens dentro dela passam a ser exigidos</em>. Ou seja, a decisão real é sobre a função; os itens vêm no pacote.
+    </div>
+    <div class="note" style="margin:0 0 20px">
+      <strong>Se o equipamento não suportar um item travado</strong>, não há como desmarcá-lo aqui — registre na seção de observações qual item é e por quê. A alternativa é não declarar aquela função. Isso é decisão de conformidade, e a equipe de integração precisa avaliar caso a caso com a EXATI.
+    </div>
+    <div class="cards" id="funcs"></div>
+  </section>
+
+  <section>
+    <div class="sec-meta">
+      <span class="sec-tag alt">Serviços</span>
+      <span class="route"><span class="m">POST</span> /services <span class="f">→ um objeto por serviço, com seus limites</span></span>
+    </div>
+    <h2>4. Serviços do gateway e seus limites</h2>
+    <p class="sec-sub">Requisição separada da classe, enviada logo depois dela no bootstrap. Serviço declarado é compromisso: o CMS vai usar as rotas correspondentes e respeitar os números informados. Se um limite não for conhecido, deixe em branco em vez de estimar.</p>
+    <div class="cards" id="servicos"></div>
+
+    <div class="sec-meta" style="margin-top:32px">
+      <span class="route none">insumo para a decisão acima — não vira requisição própria</span>
+    </div>
+    <h3 style="margin-top:0">Modos de controle que o equipamento executa</h3>
+    <p class="sec-sub" style="margin-bottom:12px">Definem, sobretudo, se faz sentido declarar o <code>ControlService</code>. Na operação do dia a dia eles viram <code>POST /calendars</code> e <code>POST /control-programs</code>, mas isso é o CMS que envia ao gateway — não faz parte do que declaramos aqui.</p>
+    <div class="note" style="margin:0 0 14px; border-left-color:var(--req)">
+      <strong>A regra de obrigatoriedade aqui é em duas partes.</strong> O <em>agendamento por calendário</em> é obrigatório e vem travado. Além dele, a especificação exige que o gateway suporte <strong>pelo menos um</strong> dos três modos com gatilho externo — sensor, astronômico, ou astronômico+sensor. Entregar só horário fixo não é conforme.
+    </div>
+    <div class="warn" id="trig-warn" style="display:none; margin:0 0 14px">
+      Nenhum modo com gatilho externo está marcado. A especificação exige pelo menos um entre sensor, astronômico e astronômico+sensor. Se o equipamento realmente não tem nenhum, registre nas observações — é um desvio de conformidade que precisa ser tratado com a EXATI.
+    </div>
+    <div class="cards" id="modos"></div>
+  </section>
+
+  <section>
+    <div class="sec-meta"><span class="route none">não vai para o protocolo — leitura da equipe de integração</span></div>
+    <h2>5. Observações</h2>
+    <p class="sec-sub">Qualquer ressalva, item que depende de versão de firmware, ou algo que ficou ambíguo.</p>
+    <textarea id="f-obs" placeholder="ex.: o atributo X só existe a partir do firmware 3.2; o evento Y é detectado mas não reportado em tempo real…"></textarea>
+  </section>
+
+  <section id="resumo">
+    <div class="sec-meta">
+      <span class="route"><span class="m">POST</span> /device-classes <span class="f">+</span> <span class="m">POST</span> /services</span>
+    </div>
+    <h2>6. Resumo para devolver</h2>
+    <p class="sec-sub">Sai em três blocos: o resumo legível, e depois <strong>um payload por requisição</strong>, já no formato exato do corpo — array, como o protocolo exige. A equipe de integração cola cada bloco na sua rota sem recortar nada.</p>
+    <div class="actions">
+      <button class="btn" id="gen">Gerar resumo</button>
+      <button class="btn ghost" id="copy">Copiar</button>
+      <button class="btn ghost" id="dl">Baixar .json</button>
+    </div>
+    <textarea id="out" readonly placeholder="O resumo aparece aqui depois de clicar em Gerar resumo."></textarea>
+  </section>
+
+  <footer>
+    Baseado na TALQ Specification 2.6.3 e nos arquivos OpenAPI oficiais (data model). Selos de obrigatoriedade referem-se ao perfil <em>lighting</em>, lado gateway.
+  </footer>
+</div>
+
+<script>
+const FUNCDATA = {"BasicFunction": {"attrs": [{"n": "displayName", "p": "O", "pc": "O", "flat": "false", "d": "Display name of the asset.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "assetId", "p": "O", "pc": "M", "flat": "false", "d": "Customer identifier of the asset. If multiple devices have the same assetId it means they belong to the same asset.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "serial", "p": "O", "pc": "M", "flat": "false", "d": "Serial number of the device.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "hwType", "p": "O", "pc": "M", "flat": "false", "d": "Hardware type of the device.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "hwVersion", "p": "O", "pc": "O", "flat": "false", "d": "Hardware revision of the device.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "swType", "p": "O", "pc": "O", "flat": "false", "d": "Software type of device. This attribute may be useful if the same hardware supports multiple firmware versions with different functions.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "swVersion", "p": "M", "pc": "M", "flat": "true", "d": "Software version installed on the device.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "installationDate", "p": "O", "pc": "O", "flat": "false", "d": "The installation date of Physical Device.", "u": "", "sc": "configuration", "t": "AttributeDateTime", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "location", "p": "O", "pc": "M", "flat": "false", "d": "Latitude, Longitude and Altitude. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new LocationSensorFunction.location instead.]", "u": "", "sc": "configuration", "t": "AttributeLocation", "dep": "2.4.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "timeZone", "p": "O", "pc": "M", "flat": "false", "d": "Time zone of the device. Time zone may be expressed in two formats. <timezone> where <timezone> is a time zone as defined in the zone.tab of the IANA timezone database [IANA]; and stdoffset[dst[offset][,start[/time],en d[/time]]] as defined by the Open Group for posix systems [POSIX]. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new TimeFunction.timeZone instead.]", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "2.4.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "ntpServers", "p": "O", "pc": "O", "flat": "false", "d": "List of NTP servers to use for time synchronization (Hostname or IP address). [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new TimeFunction.ntpServers instead.]", "u": "", "sc": "configuration", "t": "AttributeStringArray", "dep": "2.4.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "ntpSynchPeriod", "p": "O", "pc": "O", "flat": "false", "d": "Number of hours between two time synchronization updates. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new TimeFunction.ntpSynchPeriod instead.]", "u": "Hours", "sc": "configuration", "t": "AttributeInteger", "dep": "2.4.0", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "currentTime", "p": "M", "pc": "M", "flat": "true", "d": "Current time of the device defined as local time with time zone designator. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new TimeFunction.currentTime instead.]", "u": "", "sc": "measurement", "t": "AttributeDateTime", "dep": "2.4.0", "mp": ["Iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "commandConfirmation", "p": "O", "pc": "O", "flat": "false", "d": "Allows the CMS to reboot, factory reset or configuration reset of the device. Before rebooting or resetting the device this attribute has to be true. Default value = false", "u": "", "sc": "configuration", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "reboot", "p": "O", "pc": "O", "flat": "false", "d": "Reboot the device. This operational attribute requires the commandConfirmation attribute value to be set to true.", "u": "", "sc": "operational", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "factoryReset", "p": "O", "pc": "O", "flat": "false", "d": "Reset the device to factory settings. This operational attribute requires the commandConfirmation attribute value to be set to true.", "u": "", "sc": "operational", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "configurationReset", "p": "O", "pc": "O", "flat": "false", "d": "Reset the device configuration settings. This operational attribute requires the commandConfirmation attribute value to be set to true.", "u": "", "sc": "operational", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "operatingHours", "p": "O", "pc": "O", "flat": "false", "d": "Number of operating hours of the device.", "u": "Hours", "sc": "measurement", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}], "events": [{"n": "deviceReset", "p": "M", "pc": "M", "flat": "true", "d": "The physical device containing the logical device was reset.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "softwareUpdating", "p": "O", "pc": "O", "flat": "false", "d": "Indicates software updating is in progress.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "hardwareUpdating", "p": "O", "pc": "O", "flat": "false", "d": "Indicates that hardware associated with this logical device has been updated. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new hardwareUpdated instead.]", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "2.2.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "hardwareUpdated", "p": "O", "pc": "O", "flat": "false", "d": "Indicates that hardware associated with this logical device has been updated.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "batteryMode", "p": "O", "pc": "M", "flat": "false", "d": "Device operating in battery mode.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "installationMode", "p": "O", "pc": "M", "flat": "false", "d": "Device is being installed.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "maintenanceMode", "p": "O", "pc": "M", "flat": "false", "d": "Device is undergoing maintenance, where maintenance may include hardware or software related maintenance actions.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "cabinetDoorOpen", "p": "O", "pc": "M", "flat": "false", "d": "Cabinet door is open. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new SegmentMonitor.cabinetDoorOpen instead.]", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "2.4.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "batteryShutdown", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the device has shut down due to battery discharge.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "locationUpdated", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the location of a device has changed, but detecting the change is outside the scope of the TALQ Specification.[DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new LocationSensorFunction.locationChanged instead.]", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "2.4.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}]}, "LampActuatorFunction": {"attrs": [{"n": "lampTypeId", "p": "O", "pc": "O", "flat": "false", "d": "TALQ Address of an existing lampType.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": true, "num": false, "str": true, "ev": null}, {"n": "outputPort", "p": "O", "pc": "O", "flat": "false", "d": "Identifier of the output port that is controlled by the lamp actuator.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "standbyMode", "p": "O", "pc": "O", "flat": "false", "d": "Defines the behavior of the lamp actuator when output level is set to zero. If OFF, light output level is zero with no power to the lamp control gear. If ON,  light output level is zero but power is delivered to the lamp control gear (standby mode).", "u": "", "sc": "configuration", "t": "AttributeBinary", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["ON", "OFF"]}, {"n": "cloEnabled", "p": "O", "pc": "O", "flat": "false", "d": "Determines whether a Constant Light Output (CLO) correction factor is used. CLO is used to compensate for lumen output degradation over the life time of the lamp. If CLO is enabled, lamps are dimmed part of the lampType.", "u": "", "sc": "configuration", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "defaultLightState", "p": "M", "pc": "M", "flat": "true", "d": "Sets the default light output for the lamp actuator. This shall be applicable if the actuator is not under any scheduled (calendarID) or override control (OverrideCommand). This attribute shall be set to 100% as default value.", "u": "Percent", "sc": "configuration", "t": "AttributeLevelState", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": true, "typ": false, "num": false, "str": false, "ev": null}, {"n": "targetLightCommand", "p": "M", "pc": "M", "flat": "true", "d": "Latest command for the lamp actuator.", "u": "", "sc": "operational", "t": "AttributeCommand", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": true, "typ": false, "num": false, "str": false, "ev": null}, {"n": "feedbackLightCommand", "p": "M", "pc": "M", "flat": "true", "d": "This attribute reflects the command in effect and it might deviate from the actualLightState due to propagation time, due to scheduler specific or due to internal ODN specific mechanisms to handle the priority of the requests or response time.", "u": "", "sc": "measurement", "t": "AttributeCommand", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": true, "typ": false, "num": false, "str": false, "ev": null}, {"n": "actualLightState", "p": "M", "pc": "M", "flat": "true", "d": "This attribute should reflect the physical state of the light source as much as possible, including factors such as CLO. It may be calculated or measured, depending on the specific ODN  implementation, which is outside the scope of this specification.", "u": "Percent", "sc": "measurement", "t": "AttributeLevelState", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": true, "typ": false, "num": false, "str": false, "ev": null}, {"n": "maintenanceFactorEnabled", "p": "O", "pc": "O", "flat": "false", "d": "Indicates whether maintenance compensation is enabled. A maintenance factor can be added in addition to the CLO correction factor to account effects of maintenance (e.g. cleaning) of the luminaire on the lumen output.", "u": "", "sc": "configuration", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "maintenancePeriod", "p": "O", "pc": "O", "flat": "false", "d": "Period (Hours) after which maintenance factor is 100%. The assumption is that the maintenance correction factor vs. time  curve is linear.", "u": "Hours", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "maintenanceFactor", "p": "O", "pc": "O", "flat": "false", "d": "Initial correction factor applied when the luminaire is cleaned.", "u": "Percent", "sc": "configuration", "t": "AttributePercent", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "lastMaintenanceDate", "p": "O", "pc": "O", "flat": "false", "d": "Date when the luminaire was last cleaned (used to reset the maintenance factor).", "u": "", "sc": "operational", "t": "AttributeDateTime", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "calendarID", "p": "M", "pc": "M", "flat": "true", "d": "TALQ Address of the calendar controlling this lamp actuator. If this attribute is empty, the behavior shall be determined by the ODN. If the attribute is invalid, the ODN shall trigger a generic invalid address event and the behavior shall be determined by the ODN.", "u": "", "sc": "operational", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "applicationType", "p": "O", "pc": "O", "flat": "false", "d": "Application Type of the lamp actuator depending on the use case. E.g.: 'Lamp actuator; Cabinet actuator'", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}], "events": [{"n": "invalidCalendar", "p": "O", "pc": "M", "flat": "false", "d": "The lamp actuator function has been allocated a calendar that it cannot implement.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "invalidProgram", "p": "O", "pc": "M", "flat": "false", "d": "The lamp actuator function has been allocated a control program that it cannot implement.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "lightStateChange", "p": "M", "pc": "M", "flat": "true", "d": "Light state has changed.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "targetLightCommandChange", "p": "O", "pc": "O", "flat": "false", "d": "The targetLightCommand operational attribute has changed.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "programChange", "p": "O", "pc": "O", "flat": "false", "d": "The control program applicable to the lamp actuator has changed (these are the points at which the calendar changes the program).", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "calendarChange", "p": "O", "pc": "O", "flat": "false", "d": "The calendar applicable to the lamp actuator has changed.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "invalidLampType", "p": "O", "pc": "O", "flat": "false", "d": "Indicates that the lamp type referred cannot be applied.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}]}, "LampMonitorFunction": {"attrs": [{"n": "supplyType", "p": "O", "pc": "O", "flat": "false", "d": "Supply type of the lamp. Accepted values are: AC, DC.", "u": "", "sc": "configuration", "t": "AttributeSupplyType", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["AC", "DC"]}, {"n": "lampTypeId", "p": "O", "pc": "O", "flat": "false", "d": "TALQ Address of an existing lamp type. If not set to a valid value, this shall be the lamp type used in the lamp actuator. If this attribute is not supported in the implementation, the lamp monitor shall use the lamp type specified in the corresponding lamp actuator.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": true, "num": false, "str": true, "ev": null}, {"n": "monitoringReference", "p": "O", "pc": "O", "flat": "false", "d": "Name of the entity (or physical device) being monitored by this function.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "actuatorReference", "p": "O", "pc": "O", "flat": "false", "d": "Function ID of the actuator, located in the same device, whose effect is being monitored by this function. e.g.: fLampActuatorId_1 or fGenericActuatorId_2", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "numberOfLamps", "p": "O", "pc": "M", "flat": "false", "d": "Number of lamps being monitored by the lamp monitor function.", "u": "", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "switchOnCounter", "p": "O", "pc": "O", "flat": "false", "d": "Cumulative number of ON/OFF cycles since installation of the lamp. The wrap around value is 2e32 – 1.", "u": "", "sc": "measurement", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "operatingHours", "p": "O", "pc": "M", "flat": "false", "d": "Number of hours the lamp is on. This is the value used in CLO and may be set by the CMS.", "u": "Hours", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "temperature", "p": "O", "pc": "M", "flat": "false", "d": "Temperature of the device implementing this function. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new TemperatureSensorFunction.temperature instead.]", "u": "DegreesCelcius", "sc": "measurement", "t": "AttributeFloat", "dep": "2.4.0", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "supplyVoltage", "p": "O", "pc": "M", "flat": "false", "d": "RMS supply volts when supplyType is AC, supply voltage (V) when supplyType is DC.", "u": "Volts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "supplyCurrent", "p": "O", "pc": "M", "flat": "false", "d": "RMS supply current (A) when supplyType is AC, supply current (A) when supplyType is DC.", "u": "Amperes", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "activePower", "p": "O", "pc": "M", "flat": "false", "d": "Active power. (W)", "u": "Watts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "reactivePower", "p": "O", "pc": "O", "flat": "false", "d": "Reactive power.", "u": "VoltAmpereReactive", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "apparentPower", "p": "O", "pc": "O", "flat": "false", "d": "Apparent Power.", "u": "VoltAmperes", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "powerFactor", "p": "O", "pc": "M", "flat": "false", "d": "Active power/Apparent power. The power factor can get values in the range from 0 to 1.", "u": "", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "powerFactorSense", "p": "O", "pc": "M", "flat": "false", "d": "Phase sense of power factor.", "u": "", "sc": "measurement", "t": "AttributeFactorSense", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["lead", "lag"]}, {"n": "activeEnergy", "p": "O", "pc": "M", "flat": "false", "d": "Cumulative active energy (since installation or counter reset).", "u": "KiloWattHours", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "supplyLossCount", "p": "O", "pc": "O", "flat": "false", "d": "Incrementing count of supply losses. The wrap around value is 2e32 – 1.", "u": "", "sc": "measurement", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "highSupplyVoltageThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Supply voltage above which the supplyVoltageTooHigh event is triggered. (V)", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "lowSupplyVoltageThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Supply voltage below which the supplyVoltageTooLow event is triggered. (V)", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "applicationType", "p": "O", "pc": "O", "flat": "false", "d": "Application Type of the lamp monitor depending on the use case. E.g.: 'LED Monitor'", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}], "events": [{"n": "lampPowerTooHigh", "p": "O", "pc": "M", "flat": "false", "d": "Lamp power is greater than expected lamp power + lampPowerTolerance.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "lampPowerTooLow", "p": "O", "pc": "M", "flat": "false", "d": "Lamp power is smaller than expected lamp power  - lampPowerTolerance.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "lampVoltageTooHigh", "p": "O", "pc": "M", "flat": "false", "d": "Level of lamp voltage (not supply voltage) is greater than highLampVoltageThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "lampVoltageTooLow", "p": "O", "pc": "M", "flat": "false", "d": "Level of lamp voltage (not supply voltage) is smaller than lowLampVoltageThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "lampFailure", "p": "M", "pc": "M", "flat": "true", "d": "The lamp is not operating as it is supposed to (e.g. the lamp is broken). This event shall be used to detect a situation where the lamp (or LED module(s)) should be lit, but produce no light. This could be detected by the current flowing or power consumed.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "dimmingFailure", "p": "O", "pc": "O", "flat": "true", "d": "The lamp is not dimming as it is supposed to (e.g. the driver is not connected properly). This event shall be used to detect a situation where the lamp (or LED module(s)) is lighting at a dimming level which is different from the expected dimming level, taking into account the programmed (or manual) level as well any correction (e.g. virtual power, constant light output).", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "currentTooHigh", "p": "O", "pc": "M", "flat": "false", "d": "Supply current is above the highCurrentThreshold defined in the lamp type.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "currentTooLow", "p": "O", "pc": "M", "flat": "false", "d": "Supply current is below the lowCurrentThreshold defined in the lamp type.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "powerFactorTooLow", "p": "O", "pc": "M", "flat": "false", "d": "The power factor is below powerFactorThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "highTemperature", "p": "O", "pc": "M", "flat": "false", "d": "Indicates temperature is above the high threshold. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new TemperatureSensorFunction.temperatureTooHigh instead.]", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "2.4.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "relayFailure", "p": "O", "pc": "M", "flat": "false", "d": "Set in case of internal relay is failing (e.g. it may be stuck  in either on or off position). Typically if contactor error isused as well.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "absolutLampPowerTooHigh", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the power is above the lampPowerHighThreshold in the lamp type. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new absoluteLampPowerTooHigh instead.]", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "2.3.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "absolutLampPowerTooLow", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the power is below the lampPowerLowThreshold in the lamp type. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new absoluteLampPowerTooLow instead.]", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "2.3.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "absoluteLampPowerTooHigh", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the power is above the lampPowerHighThreshold in the lamp type.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "absoluteLampPowerTooLow", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the power is below the lampPowerLowThreshold in the lamp type.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "controlGearCommFailure", "p": "O", "pc": "M", "flat": "false", "d": "Indicates failure of the control gear.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "cyclingFailure", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the lamp is constantly switching ON and OFF in an unexpected manner. This event shall be used to indicate a lamp which cycles while it should be on. The actual detection algorithm is outside the scope of this specification.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "supplyLoss", "p": "O", "pc": "M", "flat": "false", "d": "Indicates loss of supply (power)", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "contactorError", "p": "O", "pc": "M", "flat": "false", "d": "Indicate error in contactor. For instance, if a contactor (relay) is used, the contactor may be stuck in either of the positions (on or off).", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "lampUnexpectedOn", "p": "O", "pc": "M", "flat": "false", "d": "Indicates lamp is unexpectedly on.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "leakageDetected", "p": "O", "pc": "M", "flat": "false", "d": "Indicates that an earth leakage fault has been detected.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "invalidLampType", "p": "O", "pc": "O", "flat": "false", "d": "Indicates that the lamp type referred cannot be applied.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "supplyVoltageTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Level of supply voltage is above the highLampVoltageThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "supplyVoltageTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Level of supply voltage is below the lowSupplyVoltageThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}]}, "ElectricalMeterFunction": {"attrs": [{"n": "totalPowerHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power above which the  totalPowerTooHigh event is triggered.", "u": "KiloWatt", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalPowerLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power below which the  totalPowerTooLow event is triggered.", "u": "KiloWatt", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "powerfactorThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power factor below which the powerfactorTooLow event is triggered.", "u": "", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1PowerfactorLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Phase 1 power factor below which the phase1PowerfactorTooLow event is triggered.", "u": "", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2PowerfactorLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Phase 2 power factor below which the phase2PowerfactorTooLow event is triggered.", "u": "", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3PowerfactorLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Phase 3 power factor below which the phase3PowerfactorTooLow event is triggered.", "u": "", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "supplyVoltageHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Supply voltage above which the supplyVoltageTooHigh event is triggered. (V)", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "supplyVoltageLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Supply voltage below which the supplyVoltageTooLow event is triggered. (V)", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1VoltageHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS voltage above which the phase1VoltageTooHigh event is triggered.", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1VoltageLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS voltage below which the phase1VoltageTooLow event is triggered.", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2VoltageHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS voltage above which the phase2VoltageTooHigh event is triggered.", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2VoltageLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS voltage below which the phase2VoltageTooLow event is triggered.", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3VoltageHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS voltage above which the phase3VoltageTooHigh event is triggered.", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3VoltageLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS voltage below which the phase3VoltageTooLow event is triggered.", "u": "Volts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalCurrentHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current above which the currentTooHigh event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalCurrentLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current below which the currentTooLow event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "neutralCurrentHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current above which the neutralCurrentTooHigh event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1CurrentHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current above which the phase1CurrentTooHigh event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1CurrentLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current below which the phase1CurrentTooLow event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2CurrentHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current above which the phase2CurrentTooHigh event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2CurrentLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current below which the phase2CurrentTooLow event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3CurrentHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current above which the phase3CurrentTooHigh event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3CurrentLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "RMS current below which the phase3CurrentTooLow event is triggered.", "u": "Amperes", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1ActivePowerHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power above which the phase1ActivePowerTooHigh event is triggered.", "u": "Watts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1ActivePowerLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power below which the phase1ActivePowerTooLow event is triggered.", "u": "Watts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2ActivePowerHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power above which the phase2ActivePowerTooHigh event is triggered.", "u": "Watts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2ActivePowerLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power below which the phase2ActivePowerTooLow event is triggered.", "u": "Watts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3ActivePowerHighThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power above which the phase3ActivePowerTooHigh event is triggered.", "u": "Watts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3ActivePowerLowThreshold", "p": "O", "pc": "O", "flat": "false", "d": "Power below which the phase3ActivePowerTooLow event is triggered.", "u": "Watts", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalPower", "p": "O", "pc": "M", "flat": "false", "d": "Sum of the active power consumed on phase 1, 2 and 3, or just the power for a single phase meter.", "u": "KiloWatt", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalVA", "p": "O", "pc": "O", "flat": "false", "d": "Sum of the apparent power consumed on phase 1, 2 and 3, or just the apparent power for a single phase meter.", "u": "KiloVoltAmpere", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalVAR", "p": "O", "pc": "O", "flat": "false", "d": "Sum of the reactive power consumed on phase 1, 2 and 3, or just the reactive power for a single phase meter.", "u": "KiloVoltAmpereReactive", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "maxDemandPower", "p": "O", "pc": "O", "flat": "false", "d": "Maximum peak power consumption.", "u": "KiloWatt", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalActiveEnergy", "p": "O", "pc": "M", "flat": "false", "d": "Total cumulative kWh measured by the meter since installation date (or counter reset).", "u": "KiloWattHours", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalReactiveEnergy", "p": "O", "pc": "O", "flat": "false", "d": "Total cumulative kVArh measured by the meter since installation date (or counter reset).", "u": "KiloVoltAmpereReactiveHours", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalApparentEnergy", "p": "O", "pc": "O", "flat": "false", "d": "Total cumulative kVAh measured by the meter since installation date (or counter reset).", "u": "KiloVoltAmpereHours", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "frequency", "p": "O", "pc": "O", "flat": "false", "d": "Frequency on the line.", "u": "Hertz", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalPowerFactor", "p": "O", "pc": "M", "flat": "false", "d": "Total active power divided by total apparent power.", "u": "", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalPowerFactorSense", "p": "O", "pc": "O", "flat": "false", "d": "Sense of power factor (lead or lag).", "u": "", "sc": "measurement", "t": "AttributeFactorSense", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["lead", "lag"]}, {"n": "phase1PowerFactor", "p": "O", "pc": "O", "flat": "false", "d": "Power factor on phase 1.", "u": "", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1PowerFactorSense", "p": "O", "pc": "O", "flat": "false", "d": "Sense of power factor (lead or lag).", "u": "", "sc": "measurement", "t": "AttributeFactorSense", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["lead", "lag"]}, {"n": "phase2PowerFactor", "p": "O", "pc": "O", "flat": "false", "d": "Power factor on phase 2.", "u": "", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2PowerFactorSense", "p": "O", "pc": "O", "flat": "false", "d": "Sense of power factor (lead or lag).", "u": "", "sc": "measurement", "t": "AttributeFactorSense", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["lead", "lag"]}, {"n": "phase3PowerFactor", "p": "O", "pc": "O", "flat": "false", "d": "Power factor on phase 3.", "u": "", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3PowerFactorSense", "p": "O", "pc": "O", "flat": "false", "d": "Sense of power factor (lead or lag).", "u": "", "sc": "measurement", "t": "AttributeFactorSense", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["lead", "lag"]}, {"n": "supplyVoltage", "p": "O", "pc": "M", "flat": "false", "d": "Average between Phase1 RMS Voltage, Phase2 RMS Voltage and Phase3 RMS Voltage, or in the case of a single phase meter just the RMS supply voltage.", "u": "Volts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1Voltage", "p": "O", "pc": "O", "flat": "false", "d": "RMS Voltage between phase 1 and neutral.", "u": "Volts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2Voltage", "p": "O", "pc": "O", "flat": "false", "d": "RMS Voltage between phase 2 and neutral.", "u": "Volts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3Voltage", "p": "O", "pc": "O", "flat": "false", "d": "RMS Voltage between phase 3 and neutral.", "u": "Volts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "voltagePhase1Phase2", "p": "O", "pc": "O", "flat": "false", "d": "RMS Voltage between phase 1 and phase 2.", "u": "Volts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "voltagePhase2Phase3", "p": "O", "pc": "O", "flat": "false", "d": "RMS Voltage between phase 2 and phase 3.", "u": "Volts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "voltagePhase3Phase1", "p": "O", "pc": "O", "flat": "false", "d": "RMS Voltage between phase 3 and phase 1.", "u": "Volts", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "totalCurrent", "p": "O", "pc": "M", "flat": "false", "d": "Sum of the RMS currents on phase 1, 2 and 3.", "u": "Amperes", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "averageCurrent", "p": "O", "pc": "M", "flat": "false", "d": "Average RMS current on phase 1, 2 and 3.", "u": "Amperes", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "neutralCurrent", "p": "O", "pc": "O", "flat": "false", "d": "RMS current on neutral.", "u": "Amperes", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1Current", "p": "O", "pc": "O", "flat": "false", "d": "RMS current on phase 1.", "u": "Amperes", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2Current", "p": "O", "pc": "O", "flat": "false", "d": "RMS current on phase 2.", "u": "Amperes", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3Current", "p": "O", "pc": "O", "flat": "false", "d": "RMS current on phase 3.", "u": "Amperes", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1ActivePower", "p": "O", "pc": "O", "flat": "false", "d": "Active Power on phase 1.", "u": "KiloWatt", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2ActivePower", "p": "O", "pc": "O", "flat": "false", "d": "Active Power on phase 2.", "u": "KiloWatt", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3ActivePower", "p": "O", "pc": "O", "flat": "false", "d": "Active Power on phase 3.", "u": "KiloWatt", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1ApparentPower", "p": "O", "pc": "O", "flat": "false", "d": "Apparent Power on phase 1.", "u": "KiloVoltAmpere", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2ApparentPower", "p": "O", "pc": "O", "flat": "false", "d": "Apparent Power on phase 2.", "u": "KiloVoltAmpere", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3ApparentPower", "p": "O", "pc": "O", "flat": "false", "d": "Apparent Power on phase 3.", "u": "KiloVoltAmpere", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1ReactivePower", "p": "O", "pc": "O", "flat": "false", "d": "Reactive Power on phase 1.", "u": "KiloVoltAmpereReactive", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2ReactivePower", "p": "O", "pc": "O", "flat": "false", "d": "Reactive Power on phase 2.", "u": "KiloVoltAmpereReactive", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3ReactivePower", "p": "O", "pc": "O", "flat": "false", "d": "Reactive Power on phase 3.", "u": "KiloVoltAmpereReactive", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1ActiveEnergy", "p": "O", "pc": "O", "flat": "false", "d": "Cumulative active energy on phase 1.", "u": "KiloWattHours", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2ActiveEnergy", "p": "O", "pc": "O", "flat": "false", "d": "Cumulative active energy on phase 2.", "u": "KiloWattHours", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3ActiveEnergy", "p": "O", "pc": "O", "flat": "false", "d": "Cumulative active energy on phase 3.", "u": "KiloWattHours", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "worstCurrentTHD", "p": "O", "pc": "O", "flat": "false", "d": "Worst value for Total Harmonic Distortion on current (all 3 phases).", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1CurrentTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on current for phase 1.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2CurrentTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on current for phase 2.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3CurrentTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on current for phase 3.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "worstVoltageTHD", "p": "O", "pc": "O", "flat": "false", "d": "Worst Total Harmonic Distortion on voltage (all 3 phases).", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "averageVoltageTHD", "p": "O", "pc": "O", "flat": "false", "d": "Average value of Total Harmonic Distortion on voltage.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1VoltageTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on voltage for phase 1.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2VoltageTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on voltage for phase 2.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3VoltageTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on voltage for phase 3.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1_2VoltageTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on voltage between phase 1 and phase 2.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2_3VoltageTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on voltage between phase 2 and phase 3.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3_1VoltageTHD", "p": "O", "pc": "O", "flat": "false", "d": "Total Harmonic Distortion on voltage between phase 3 and phase 1.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "supplyLossCount", "p": "O", "pc": "O", "flat": "false", "d": "Incrementing count of supply losses. In the case of 3 phases the count of losses on all three phases together. The wrap around value is 2e32 – 1.", "u": "", "sc": "measurement", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase1SupplyLossCount", "p": "O", "pc": "O", "flat": "false", "d": "Incrementing count of supply losses on Phase 1. The wrap around value is 2e32 – 1.", "u": "", "sc": "measurement", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase2SupplyLossCount", "p": "O", "pc": "O", "flat": "false", "d": "Incrementing count of supply losses on Phase 2. The wrap around value is 2e32 – 1.", "u": "", "sc": "measurement", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "phase3SupplyLossCount", "p": "O", "pc": "O", "flat": "false", "d": "Incrementing count of supply losses on Phase 3. The wrap around value is 2e32 – 1.", "u": "", "sc": "measurement", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "applicationType", "p": "O", "pc": "O", "flat": "false", "d": "Application Type of the electrical meter depending on the use case. E.g.: 'Lamp Electrical Meter; Segment Electrical Meter'", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "actuatorReference", "p": "O", "pc": "O", "flat": "false", "d": "Function ID of the actuator, located in the same device, whose effect is being monitored by this function. e.g.: fLampActuatorId_1 or fGenericActuatorId_2", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}], "events": [{"n": "totalPowerTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates total power is above the totalPowerHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "totalPowerTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates total power is below the totalPowerLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "powerfactorTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the power factor is below the powerfactorThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase1PowerfactorTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 1 power factor is below the phase1PowerfactorLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase2PowerfactorTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 2 power factor is below the phase1PowerfactorLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase3PowerfactorTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 3 power factor is below the phase1PowerfactorLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "supplyVoltageTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates supply voltage is above the supplyVoltageHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "supplyVoltageTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates supply voltage is below the supplyVoltageLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase1VoltageTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates phase 1 supply voltage is above the phase1VoltageHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase1VoltageTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates phase 1 supply voltage is below the phase1VoltageLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase2VoltageTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates phase 2 supply voltage is above the phase2VoltageHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase2VoltageTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates phase 2 supply voltage is below the phase2VoltageLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase3VoltageTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates phase 3 supply voltage is above the phase3VoltageHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase3VoltageTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates phase 3 supply voltage is below the phase3VoltageLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "totalCurrentTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the current is above the totalCurrentHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "totalCurrentTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the current is below the totalCurrentLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "neutralCurrentTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the neutral current is above the neutralCurrentHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase1CurrentTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 1 current is above the phase1CurrentHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase1CurrentTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 1 current is below the phase1CurrentLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase2CurrentTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 2 current is above the phase2CurrentHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase2CurrentTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 2 current is below the phase2CurrentLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase3CurrentTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 3 current is above the phase3CurrentHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase3CurrentTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 3 current is below the phase3CurrentLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase1ActivePowerTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 1 active power is above the phase1ActivePowerHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase1ActivePowerTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 1 active power is below the phase1ActivePowerLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase2ActivePowerTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 2 active power is above the phase2ActivePowerHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase2ActivePowerTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 2 active power is below the phase2ActivePowerLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase3ActivePowerTooHigh", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 3 active power is above the phase3ActivePowerHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "phase3ActivePowerTooLow", "p": "O", "pc": "O", "flat": "false", "d": "Indicates the phase 3 active power is below the phase3ActivePowerLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "supplyLoss", "p": "O", "pc": "O", "flat": "false", "d": "Indicates loss of supply (power)", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}]}, "CommunicationFunction": {"attrs": [{"n": "communicationType", "p": "O", "pc": "O", "flat": "false", "d": "Type of communication technology implemented by the ODN (e.g. power line, wireless).", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "logicalAddress", "p": "O", "pc": "O", "flat": "false", "d": "Logical address for communication within the ODN scope (IP address, Short Address, ...).", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "altLogicalAddress", "p": "O", "pc": "O", "flat": "false", "d": "Additional logical address used for communication within the ODN, for instance, group communication address (not a TALQ group address).", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "physicalAddress", "p": "M", "pc": "M", "flat": "true", "d": "Physical address of the device. For example, IEEE MAC address. This attribute can be used to map between logical and physical devices. The format is specific to the ODN implementation.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "parentAddress", "p": "O", "pc": "M", "flat": "false", "d": "TALQ Address of the parent device, e.g. gateway. It shall point to a specific communication function.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "timeToLive", "p": "O", "pc": "O", "flat": "false", "d": "Number of times a packet can be forwarded within the ODN.", "u": "", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "repeatingEnabled", "p": "O", "pc": "O", "flat": "false", "d": "Describes whether repeating functionality is enabled at the device.", "u": "", "sc": "configuration", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "transmitPower", "p": "O", "pc": "O", "flat": "false", "d": "Transmit power used by the device within the ODN. (dBm)", "u": "dBm", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "numberOfHops", "p": "O", "pc": "O", "flat": "false", "d": "Number of hops between the gateway and the ODN device represented by the device including this function.", "u": "", "sc": "measurement", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "communicationQuality", "p": "O", "pc": "O", "flat": "false", "d": "Indicator of the quality of the communication with the device. 100% means good quality.", "u": "Percent", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "applicationType", "p": "O", "pc": "O", "flat": "false", "d": "Application Type of the communication function depending on the use case. E.g.: 'PL Communication Monitor'", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}], "events": [{"n": "communicationFailure", "p": "M", "pc": "M", "flat": "true", "d": "This attribute is updated by the ODN when the communication function is not operating as expected.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}]}, "PhotocellFunction": {"attrs": [{"n": "onLevel", "p": "O", "pc": "M", "flat": "false", "d": "Illuminance level at which the photocell switches to on state.", "u": "Illuminance", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "offLevel", "p": "O", "pc": "M", "flat": "false", "d": "Illuminance level at which the photocell switches to off state.", "u": "Illuminance", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "photocellOutput", "p": "M", "pc": "M", "flat": "true", "d": "Output state of the photocell. Possible values are ON (means the illuminance level has fallen below the onLevel) and OFF (means the illuminance level has risen above the offLevel).", "u": "", "sc": "measurement", "t": "AttributeBinary", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["ON", "OFF"]}, {"n": "applicationType", "p": "O", "pc": "O", "flat": "false", "d": "Application Type of the photocell depending on the use case. E.g.: 'Presence detector'", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}], "events": [{"n": "photocellOutputOn", "p": "O", "pc": "M", "flat": "false", "d": "The photocell output has changed to ON.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}]}, "LightSensorFunction": {"attrs": [{"n": "levelHighThreshold", "p": "O", "pc": "M", "flat": "false", "d": "Light level above which a levelTooHigh event is triggered.", "u": "Illuminance", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "levelLowThreshold", "p": "O", "pc": "M", "flat": "false", "d": "Light level below which a levelTooLow event is triggered.", "u": "Illuminance", "sc": "configuration", "t": "AttributeFloat", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "lightLevel", "p": "M", "pc": "M", "flat": "true", "d": "Illuminance level.", "u": "Illuminance", "sc": "measurement", "t": "AttributeFloat", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "applicationType", "p": "O", "pc": "O", "flat": "false", "d": "Application Type of the light sensor depending on the use case. E.g.: 'Day light detector'", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}], "events": [{"n": "levelTooHigh", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the light level is above the levelHighThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "levelTooLow", "p": "O", "pc": "M", "flat": "false", "d": "Indicates the light level is below the levelLowThreshold.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}]}, "TimeFunction": {"attrs": [{"n": "timeZone", "p": "O", "pc": "M", "flat": "false", "d": "Time zone of the device. Time zone may be expressed in two formats. <timezone> where <timezone> is a time zone as defined in the zone.tab of the IANA timezone database [IANA]; and stdoffset[dst[offset][,start[/time],en d[/time]]] as defined by the Open Group for posix systems [POSIX].", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "ntpServers", "p": "O", "pc": "O", "flat": "false", "d": "List of NTP servers to use for time synchronization (Hostname or IP address).", "u": "", "sc": "configuration", "t": "AttributeStringArray", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "ntpSynchPeriod", "p": "O", "pc": "O", "flat": "false", "d": "Number of hours between two time synchronization updates.", "u": "Hours", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "currentTime", "p": "M", "pc": "M", "flat": "true", "d": "Current time of the device defined as local time with time zone designator.", "u": "", "sc": "measurement", "t": "AttributeDateTime", "dep": "", "mp": ["Iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "lastTimeSync", "p": "O", "pc": "O", "flat": "false", "d": "Last time at which a successful time synchronization occurred.", "u": "", "sc": "measurement", "t": "AttributeDateTime", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}], "events": [{"n": "lastSyncError", "p": "O", "pc": "O", "flat": "false", "d": "Set to True in case the latest time synchronization operation failed. Set to False in case the last operation succeeded.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}]}, "LuminaireAssetFunction": {"attrs": [{"n": "luminaireTypeAddress", "p": "M", "pc": "M", "flat": "false", "d": "Address of the Luminaire Type", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": true, "num": false, "str": true, "ev": null}, {"n": "bracketTypeAddress", "p": "O", "pc": "O", "flat": "false", "d": "Address of the Bracket Type", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Ativos de iluminação"], "cmd": false, "typ": true, "num": false, "str": true, "ev": null}, {"n": "serial", "p": "M", "pc": "M", "flat": "false", "d": "Serial number of the Luminaire", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "projectID", "p": "M", "pc": "M", "flat": "false", "d": "Name of the Project / Tender", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "luminousFluxConfiguration", "p": "M", "pc": "M", "flat": "false", "d": "Programmed light output of the luminaire", "u": "Lumens", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "paintingColor", "p": "M", "pc": "O", "flat": "false", "d": "Painting color of the luminaire expressed as a color system-color value, (e.g: RAL-7035)", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "virtualPowerOutput", "p": "O", "pc": "O", "flat": "false", "d": "Percentage of nominal power at which the light source should be set when the Command is set to 100%.", "u": "", "sc": "configuration", "t": "AttributeLevelState", "dep": "", "mp": ["Ativos de iluminação"], "cmd": true, "typ": false, "num": false, "str": false, "ev": null}, {"n": "installationTimestamp", "p": "M", "pc": "M", "flat": "false", "d": "Installation date and time of luminaire", "u": "", "sc": "configuration", "t": "AttributeDateTime", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "identification", "p": "M", "pc": "M", "flat": "false", "d": "Luminaire identification. (e.g: as per DiiA/D4i specification part 251 (MB1 extension)).", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "identificationNumber", "p": "M", "pc": "M", "flat": "false", "d": "Luminaire identification number. (e.g: as per DiiA/D4i specification part 251 (MB1 extension))", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "mountingOption", "p": "O", "pc": "O", "flat": "false", "d": "Installed direction of the luminaire to the support", "u": "", "sc": "configuration", "t": "AttributeMountingOption", "dep": "", "mp": ["Ativos de iluminação"], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["Top", "Bottom", "Side", "Other"]}, {"n": "warrantyExpirationDate", "p": "O", "pc": "O", "flat": "false", "d": "Warranty expiration date. It can be reset", "u": "", "sc": "configuration", "t": "AttributeDateTime", "dep": "", "mp": ["Ativos de iluminação"], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "manufactureYear", "p": "O", "pc": "O", "flat": "false", "d": "Year of manufacture of the luminaire.", "u": "", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": ["Ativos de iluminação"], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "manufactureWeek", "p": "O", "pc": "O", "flat": "false", "d": "Week of manufacture of the luminaire.", "u": "", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": ["Ativos de iluminação"], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "warrantyYears", "p": "O", "pc": "O", "flat": "false", "d": "Number of years for warranty of this individual luminaire. If a value is also present in the LuminaireType.warrantyYears, then this value could be considered as an override to that value. E.g., for extended or shortened warranty periods", "u": "Years", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": ["Ativos de iluminação"], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "applicationType", "p": "O", "pc": "M", "flat": "false", "d": "Application Type of the luminaire asset depending on the use case.", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": ["Ativos de iluminação"], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}], "events": []}, "SegmentMonitorFunction": {"attrs": [{"n": "applicationType", "p": "O", "pc": "M", "flat": "false", "d": "Application Type of the segment monitor depending on the use case. E.g.: \"Road Lighting, Architecture Lighting\"", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "segmentReference", "p": "O", "pc": "M", "flat": "false", "d": "Reference of the segment monitor depending on the use case. E.g.: \"Segment A1\"", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "actuatorReference", "p": "O", "pc": "O", "flat": "false", "d": "Function ID of the actuator, located in the same device, whose effect is being monitored by this function. e.g.: fLampActuatorId_1 or fGenericActuatorId_2", "u": "", "sc": "configuration", "t": "AttributeString", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": true, "ev": null}, {"n": "numberOfLoads", "p": "O", "pc": "M", "flat": "false", "d": "Number of loads being monitored by the segment monitor function.", "u": "", "sc": "configuration", "t": "AttributeInteger", "dep": "", "mp": [], "cmd": false, "typ": false, "num": true, "str": false, "ev": null}, {"n": "actualState", "p": "M", "pc": "M", "flat": "true", "d": "This attribute should reflect the physical relay state (ON, OFF) of the source as much as possible. It may be calculated or measured, depending on the specific ODN implementation, which is outside the scope of this specification.", "u": "", "sc": "measurement", "t": "AttributeBinary", "dep": "", "mp": ["Iluminação", "Resíduos", "Ambiental", "Estacionamento", "Tráfego", "Ativos de iluminação", "Comando/cabine"], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["ON", "OFF"]}], "events": [{"n": "switchingErrorOn", "p": "O", "pc": "M", "flat": "false", "d": "Indicates error in switching circuit. For instance, if a contactor or relay is used, it may be stuck in ON position.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "switchingErrorOff", "p": "O", "pc": "M", "flat": "false", "d": "Indicates error in switching circuit. For instance, if a contactor or relay is used, it may be stuck in OFF position.", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "leakageDetected", "p": "O", "pc": "M", "flat": "false", "d": "Indicates that an earth leakage fault has been detected. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new CabinetMonitorFunction.leakageDetected instead.]", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "2.6.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "cabinetDoorOpen", "p": "O", "pc": "M", "flat": "false", "d": "Cabinet door is open. [DEPRECATED: This attribute has been deprecated and it will be removed in the next MAJOR release. Please use the new CabinetMonitorFunction.cabinetDoorOpen instead.]", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "2.6.0", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "circuitBreakerTripped", "p": "O", "pc": "M", "flat": "false", "d": "Indicates that the circuit breaker has tripped", "u": "", "sc": "event", "t": "AttributeBoolean", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": null}, {"n": "localOverride", "p": "O", "pc": "M", "flat": "false", "d": "Indicates that there is a local override (ON, OFF) or no override", "u": "", "sc": "event", "t": "AttributeLocalOverride", "dep": "", "mp": [], "cmd": false, "typ": false, "num": false, "str": false, "ev": ["ON", "OFF", "NONE"]}]}};
+
+const STATES = ["LevelState","BooleanState","IntegerState","FloatState","TextState",
+                "CCTColorState","RGBState","XYColorState","RGBWAFColorState",
+                "LevelAndCCTColorState","LevelAndXYColorState","LevelAndRGBWAFColorState","PositionedTextState"];
+const CMD_ATTRS = ["reason","cmsRefId","refAddress","start","expiration","rampToLevelTime","rampFromLevelTime"];
+const TYPE_OPTS = ["LuminaireType","LampType (deprecado)","DriverType","ControllerType","BracketType"];
+
+const MODOS = [
+  {id:"agenda", t:"Agendamento por calendário", s:"AbsoluteActivePeriod", req:true,
+   d:"Horário fixo de início e fim. <b>Obrigatório para o gateway e para o CMS</b> — não é escolha, temos que suportar de qualquer forma. Por isso vem marcado e travado."},
+  {id:"sensor", t:"Sensor de luminosidade local", s:"SensorActivePeriod", trig:true,
+   d:"A luminária acende quando o nível medido cai abaixo de um limiar e apaga quando sobe acima de outro. Exige indicar qual sensor, o nível de acender e o de apagar."},
+  {id:"astro", t:"Astronômico por geolocalização", s:"AstroClockActivePeriod", trig:true,
+   d:"Pôr e nascer do sol calculados por latitude e longitude, com deslocamento em minutos (aceita negativo: −5 significa 5 minutos antes)."},
+  {id:"astro_sensor", t:"Astronômico + sensor", s:"AstroAndSensorActivePeriod", trig:true,
+   d:"Tipo próprio no TALQ, e é uma <b>interseção</b>: o sensor decide, mas só dentro da janela astronômica. Exige informar se a fotocélula vale antes do pôr e antes do nascer do sol."},
+  {id:"agenda_sensor", t:"Agendamento + sensor", s:"⚠ sem tipo próprio no TALQ",
+   d:"<b>Precisamos que você esclareça o que isso significa na operação.</b> O TALQ não tem um tipo para essa combinação. Se for <i>“acende no horário OU quando escurecer, o que vier primeiro”</i>, resolve-se listando dois períodos no mesmo programa. Se for <i>“o sensor decide, mas só dentro da janela agendada”</i>, não há tipo equivalente — só existe a versão astronômica (o item acima). Descreva o comportamento esperado nas observações."},
+  {id:"override", t:"Comando manual / override", s:"OverrideCommand",
+   d:"Acionamento pontual do CMS, com expiração e rampa opcionais. Sem expiração, o override vale para sempre."}
+];
+
+const SERVICOS = [
+  {id:"ControlService", t:"ControlService", s:"Calendários e programas de controle",
+   d:"O serviço mais pesado: calendários, programas, pontos de comutação e períodos ativos. Só declare se a plataforma souber armazenar e executar programação de iluminação, não apenas ligar e desligar.",
+   lim:[["maximumCalendars","Máximo de calendários"],["maximumPrograms","Máximo de programas"],
+        ["maxProgramsPerCalendar","Programas por calendário"],["maxSwitchPointsPerProgram","Pontos de comutação por programa"],
+        ["maxActivePeriodsPerProgram","Períodos ativos por programa"],["dayOffset","Início do dia — só 0 ou 12"]]},
+  {id:"GroupManagementService", t:"GroupManagementService", s:"Grupos de dispositivos",
+   d:"Endereçar vários dispositivos por um único endereço. Quem cria os grupos é o CMS. Atenção: grupo é uma fotografia, não referência viva — se um calendário for atribuído e a composição mudar depois, ele continua valendo para os membros originais.",
+   lim:[["maximumNumberOfGroups","Máximo de grupos"],["maximumGroupSize","Membros por grupo"]]},
+  {id:"DataCollectService", t:"DataCollectService", s:"Coleta e envio de medições",
+   d:"Registro periódico ou por evento das grandezas medidas, enviado em relatórios. Como a plataforma já é de medição, tende a ser o mais natural de suportar.",
+   lim:[["maximumDataLogs","Máximo de coletores"],["samplingAccuracy","Desvio máximo de amostragem (s)"],
+        ["minCollectionTime","Tempo entre medir e poder reportar (s)"]]},
+  {id:"ConfigurationService", t:"ConfigurationService", s:"Capacidades gerais e perfis",
+   d:"Sem limites numéricos. É onde declaramos quais perfis suportamos e se a plataforma aceita comissionamento pelo CMS e paginação de dispositivos.", lim:[]},
+  {id:"DataPackageService", t:"DataPackageService", s:"Atualização de firmware",
+   d:"Distribuição de pacotes de firmware pelo CMS, de forma assíncrona. Só declare se houver atualização remota de fato.", lim:[]},
+  {id:"AssetManagementService", t:"AssetManagementService", s:"Dados de ativo",
+   d:"Cadastro de tipos de luminária, driver, braço e controlador. Puxa o perfil lightingAssetManagement junto, com novas obrigações.", lim:[]}
+];
+
+/* escopo: o que o campo é, em linguagem de operação */
+const SCOPE = {
+  configuration:["Configuração","valor que o CMS grava no equipamento"],
+  measurement:  ["Medição","leitura que o equipamento reporta ao CMS"],
+  event:        ["Evento","ocorrência que o equipamento sinaliza quando acontece"],
+  operational:  ["Operacional","estado corrente de funcionamento"]
+};
+
+/* notas práticas escritas por nós, onde a descrição da spec é curta demais
+   para decidir. Chave: "Funcao.atributo" */
+const NOTAS = {
+  "LampActuatorFunction.targetLightCommand":
+    "É por aqui que o CMS manda acender, apagar ou dimerizar. Se este atributo não existir, o dispositivo não é controlável remotamente — só monitorado.",
+  "LampActuatorFunction.actualLightState":
+    "O que a luminária <b>está de fato</b> fazendo agora, que pode divergir do comandado (lâmpada queimada, override local). Se o equipamento não sabe informar o estado real e só ecoa o comando recebido, isso precisa ficar registrado nas observações.",
+  "LampActuatorFunction.feedbackLightCommand":
+    "Confirmação de que o comando foi executado. Diferente do actualLightState: aqui é a resposta ao comando, lá é a condição atual.",
+  "LampActuatorFunction.defaultLightState":
+    "O que a luminária faz quando nenhum programa ou override está ativo — o comportamento de segurança. Por padrão o TALQ desliga o atuador fora dos períodos ativos.",
+  "LampActuatorFunction.calendarID":
+    "Qual calendário está atribuído a este dispositivo. Só faz sentido se formos declarar o ControlService.",
+  "LampActuatorFunction.lightStateChange":
+    "Evento disparado a cada mudança de estado. Em uma frota grande isso gera volume alto — vale confirmar se o equipamento reporta toda mudança ou só as relevantes.",
+  "BasicFunction.swVersion":
+    "Versão de firmware. Obrigatório, e é o que permite ao CMS saber quais recursos aquela unidade suporta.",
+  "BasicFunction.deviceReset":
+    "Comando de reinício remoto. Confirme se o equipamento aceita reset pelo CMS e o que exatamente ele reinicia — só a aplicação, ou o rádio também.",
+  "BasicFunction.currentTime":
+    "Relógio do dispositivo. <b>Atenção:</b> este atributo está deprecado desde a 2.4.0 e foi movido para a TimeFunction, mas continua marcado como obrigatório para o gateway. Se implementarmos a TimeFunction, vale perguntar à EXATI qual dos dois o certifier espera.",
+  "LampMonitorFunction.lampFailure":
+    "Lâmpada queimada ou não acendendo. É o evento mais importante da operação de iluminação pública — normalmente o que dispara ordem de serviço.",
+  "LampMonitorFunction.lampTypeId":
+    "Referência ao tipo de luminária. O mesmo identificador é usado pelo LampActuator e pelo LampMonitor: editar um tipo afeta todos que apontam para ele.",
+  "CommunicationFunction.physicalAddress":
+    "Endereço físico do módulo na rede de campo. No nosso caso vem do nms_leaf_node_module.",
+  "CommunicationFunction.communicationFailure":
+    "Perda de comunicação com o dispositivo. Existe em duas camadas no TALQ: aqui (nível de rede) e via BasicFunction (nível de dispositivo).",
+  "PhotocellFunction.photocellOutput":
+    "Saída da fotocélula, ligado ou desligado. É o que alimenta o modo de controle por sensor de luminosidade.",
+  "LightSensorFunction.lightLevel":
+    "Nível de luminosidade medido. Diferente da fotocélula: aqui é valor contínuo, lá é liga/desliga.",
+  "SegmentMonitorFunction.actualState":
+    "Estado real do segmento ou circuito. Relevante em comando de cabine, onde alguém pode ter operado a chave manualmente.",
+  "LuminaireAssetFunction.luminaireTypeAddress":
+    "Aponta para o cadastro do tipo de luminária. Declarar esta função obriga a manter esse cadastro sincronizado — são 8 atributos obrigatórios de uma vez.",
+  "LuminaireAssetFunction.serial":
+    "Número de série do equipamento. Obrigatório se a função for declarada.",
+  "LuminaireAssetFunction.installationTimestamp":
+    "Data de instalação em campo. Na nossa base isso corresponde ao install_time do archive_meter."
+};
+
+const $ = s => document.querySelector(s);
+const el = (t,c,x) => { const n=document.createElement(t); if(c)n.className=c; if(x!==undefined)n.textContent=x; return n; };
+function field(lbl, node){ const l=el("label","field"); l.append(el("span","",lbl), node); return l; }
+function numInput(ph){ const i=el("input"); i.type="number"; i.placeholder=ph||""; return i; }
+
+/* ---------- descrição enriquecida ---------- */
+function buildDesc(host, a, fname){
+  host.append(el("p","", a.d || "Sem descrição na especificação."));
+
+  const nota = NOTAS[fname+"."+a.n];
+  if(nota){ const t=el("div","tip"); t.innerHTML="<b>Na prática:</b> "+nota; host.append(t); }
+
+  if(a.dep){
+    const w=el("div","warn");
+    w.textContent="Deprecado desde a versão "+a.dep+". Continua funcionando, mas a especificação recomenda o substituto. Se o equipamento depende dele, registre nas observações.";
+    host.append(w);
+  }
+
+  const dl=el("dl","meta-grid");
+  const put=(k,v,html)=>{ dl.append(el("dt","",k)); const dd=el("dd"); if(html) dd.innerHTML=v; else dd.textContent=v; dl.append(dd); };
+
+  const s=SCOPE[a.sc];
+  if(s) put("Escopo", "<b>"+s[0]+"</b> — "+s[1], true);
+  if(a.t) put("Tipo TALQ", a.t);
+  if(a.u) put("Unidade", a.u);
+
+  const lbl = v => v==="M" ? "<b>obrigatório</b> se a função for declarada"
+                 : v==="O" ? "opcional" : "não se aplica";
+  put("No gateway", lbl(a.p), true);
+  put("No CMS", lbl(a.pc), true);
+  if(a.flat!==undefined && ((a.flat==="true") !== (a.p==="M"))){
+    const w=el("div","warn");
+    w.textContent="Inconsistência na própria especificação: o campo x-talq-mandatory-gw diz \""+a.flat+
+      "\", mas o perfil lighting diz \""+(a.p||"—")+"\". Estamos seguindo o perfil, que é o mais específico.";
+    host.append(w);
+  }
+
+  if(a.mp && a.mp.length){
+    const outros=a.mp.filter(x=>x!=="Iluminação");
+    if(outros.length) put("Obrigatório também em", outros.join(" · "));
+  }
+  host.append(dl);
+}
+
+/* ---------- painéis aninhados por atributo ---------- */
+function buildDetail(a, fname){
+  const box = el("div","detail");
+  const key = fname+"."+a.n;
+
+  if(a.cmd){
+    box.append(el("p","dt","commands — o que este comando aceita"));
+    const rng = el("div","rng");
+    const lo = numInput("0"); lo.min=0; lo.max=100; lo.dataset.k=key+".levels.start";
+    const hi = numInput("100"); hi.min=0; hi.max=100; hi.dataset.k=key+".levels.end";
+    const st = numInput("1"); st.min=1; st.max=100; st.dataset.k=key+".levels.step";
+    rng.append(field("Nível mínimo (%)",lo), field("Nível máximo (%)",hi), field("Passo (%)",st));
+    box.append(rng);
+    box.append(el("p","hint","O TALQ usa inteiros de 0 a 100. Se o equipamento só liga e desliga, informe mínimo 0 e máximo 0 e acrescente uma observação. Se ele opera em degraus, informe o passo."));
+
+    box.append(el("p","dt","states — formas de estado aceitas"));
+    const chips = el("div","chips");
+    STATES.forEach(s=>{
+      const c=el("label","chip"); const i=el("input"); i.type="checkbox"; i.dataset.k=key+".states"; i.value=s;
+      i.addEventListener("change",()=>c.classList.toggle("on",i.checked));
+      c.append(i, el("span","",s)); chips.append(c);
+    });
+    box.append(chips);
+    box.append(el("p","hint","Para dimerização simples, LevelState basta. BooleanState cobre liga/desliga. Os de cor só se o equipamento controlar temperatura ou cor."));
+
+    box.append(el("p","dt","attributes — parâmetros de comando suportados"));
+    const chips2 = el("div","chips");
+    CMD_ATTRS.forEach(s=>{
+      const c=el("label","chip"); const i=el("input"); i.type="checkbox"; i.dataset.k=key+".cmdattrs"; i.value=s;
+      i.addEventListener("change",()=>c.classList.toggle("on",i.checked));
+      c.append(i, el("span","",s)); chips2.append(c);
+    });
+    box.append(chips2);
+    box.append(el("p","hint","rampToLevelTime e rampFromLevelTime são os tempos de subida e descida, em segundos, com decimal permitido. expiration define quando um override deixa de valer."));
+  }
+
+  if(a.typ){
+    box.append(el("p","dt","types — que tipo de ativo este atributo referencia"));
+    const sel = el("select"); sel.dataset.k=key+".typeRef";
+    sel.append(el("option","","— selecione —"));
+    TYPE_OPTS.forEach(o=>{ const op=el("option","",o); op.value=o; sel.append(op); });
+    box.append(field("Tipo referenciado", sel));
+    box.append(el("p","hint","LampType está deprecado na 2.6.3 e foi dividido em Luminaire, Bracket, Driver e Controller. Se o equipamento ainda usa o modelo antigo, registre isso nas observações."));
+  }
+
+  if(a.num){
+    box.append(el("p","dt","faixa de valores (opcional)"));
+    const rng = el("div","rng");
+    const lo = numInput("mín"); lo.dataset.k=key+".minValue";
+    const hi = numInput("máx"); hi.dataset.k=key+".maxValue";
+    rng.append(field("minValue",lo), field("maxValue",hi));
+    if(a.u && a.u!=="None"){
+      const u=el("input"); u.type="text"; u.value=a.u; u.readOnly=true; u.dataset.k=key+".unit";
+      rng.append(field("unidade (da spec)",u));
+    }
+    box.append(rng);
+    box.append(el("p","hint","Preencha só se o equipamento tiver um limite real e conhecido. Em branco significa sem restrição declarada."));
+  }
+
+  if(a.ev && a.ev.length){
+    box.append(el("p","dt","valores desta lista — marque os que o equipamento aceita"));
+    const chips = el("div","chips");
+    a.ev.forEach(val=>{
+      const c=el("label","chip"); const i=el("input"); i.type="checkbox";
+      i.dataset.k=key+".enumPick"; i.value=val;
+      i.addEventListener("change",()=>c.classList.toggle("on",i.checked));
+      c.append(i, el("span","",val)); chips.append(c);
+    });
+    box.append(chips);
+    box.append(el("p","hint","Lista fechada pela especificação — o TALQ não aceita outros valores neste atributo. Se o equipamento usar algo fora dela, registre nas observações em vez de inventar um valor."));
+  } else if(a.str){
+    box.append(el("p","dt","valores possíveis (opcional)"));
+    const t=el("input"); t.type="text"; t.placeholder="deixe em branco se for texto livre";
+    t.dataset.k=key+".enumValues";
+    box.append(field("Se o equipamento só aceita alguns valores, liste-os separados por vírgula", t));
+    box.append(el("p","hint","A especificação não restringe este atributo. Preencher aqui é uma restrição nossa, que o CMS passará a respeitar."));
+  }
+
+  const ro = el("label","chip"); const roi=el("input"); roi.type="checkbox"; roi.dataset.k=key+".readOnly";
+  roi.addEventListener("change",()=>ro.classList.toggle("on",roi.checked));
+  ro.append(roi, el("span","","readOnly — o CMS não pode alterar"));
+  const wrap = el("div","chips"); wrap.style.marginTop="12px"; wrap.append(ro);
+  box.append(wrap);
+
+  return box;
+}
+
+function attrRow(container, a, fname, kind){
+  const isMand = a.p==="M";
+  const li = el("li","item"+(isMand?" locked":""));
+  const row = el("div","item-row");
+  const cb = el("input"); cb.type="checkbox"; cb.dataset.name=a.n; cb.dataset.kind=kind; cb.dataset.fn=fname;
+  if(isMand){ cb.checked=true; cb.disabled=true; cb.dataset.mand="1";
+              cb.title="Obrigatório no perfil lighting — não pode ser desmarcado"; }
+  const nm = el("button","item-name",a.n); nm.type="button";
+  row.append(cb,nm);
+  if(isMand){ row.append(el("span","badge m","OBRIG")); row.append(el("span","lock","🔒")); }
+  const hasDetail = kind==="attr" && (a.cmd||a.typ||a.num||a.str||a.ev);
+  if(a.ev && a.ev.length) row.append(el("span","badge n", a.ev.length+" VALORES"));
+  else if(hasDetail) row.append(el("span","badge n","DETALHE"));
+  const info = el("button","info","i"); info.type="button";
+  info.setAttribute("aria-expanded", isMand?"true":"false");
+  info.setAttribute("aria-label","Descrição de "+a.n);
+  row.append(info);
+
+  const d = el("div","desc"+(isMand?" show":""));
+  buildDesc(d, a, fname);
+  li.append(row,d);
+
+  let det=null;
+  if(hasDetail){ det = buildDetail(a,fname); if(isMand) det.classList.add("show"); li.append(det); }
+
+  nm.addEventListener("click",()=>{
+    if(cb.disabled) return;
+    cb.checked=!cb.checked; cb.dispatchEvent(new Event("change",{bubbles:true}));
+  });
+  info.addEventListener("click",()=>{
+    const open=d.classList.toggle("show");
+    info.setAttribute("aria-expanded",open?"true":"false");
+  });
+  cb.addEventListener("change",()=>{ if(det) det.classList.toggle("show",cb.checked); recount(); });
+  container.append(li);
+}
+
+function vendorBlock(fname){
+  const box = el("div","vend");
+  const rows = el("div");
+  const add = el("button","mini","+ Adicionar atributo próprio"); add.type="button";
+  add.onclick=()=>{
+    const r = el("div","vrow"); r.dataset.fn=fname;
+    const n=el("input"); n.type="text"; n.placeholder="nome"; n.dataset.v="name";
+    const sc=el("select"); sc.dataset.v="scope";
+    ["measurement","configuration","event","operational"].forEach(o=>{const op=el("option","",o);op.value=o;sc.append(op)});
+    const ty=el("select"); ty.dataset.v="type";
+    ["AttributeFloat","AttributeInteger","AttributeString","AttributeBoolean","AttributeDateTime","AttributePercent"]
+      .forEach(o=>{const op=el("option","",o);op.value=o;ty.append(op)});
+    const del=el("button","del","Remover"); del.type="button"; del.onclick=()=>{r.remove(); recount();};
+    r.append(field("Nome",n), field("Escopo",sc), field("Tipo",ty), del);
+    rows.append(r); recount();
+  };
+  box.append(rows,add);
+  box.append(el("p","hint","Atributos que existem no nosso equipamento mas não no padrão TALQ. Eles são aceitos e ignorados por CMS que não os conheçam — mas precisam declarar escopo e tipo."));
+  return box;
+}
+
+function buildFunctions(){
+  const host = $("#funcs");
+  Object.entries(FUNCDATA).forEach(([fname,data])=>{
+    const card = el("article","card"); card.dataset.fn=fname;
+    const head = el("div","card-head");
+    const cb = el("input"); cb.type="checkbox"; cb.dataset.fnInc=fname;
+    const tt = el("div","card-title");
+    tt.append(el("span","t",fname));
+    const mand = data.attrs.filter(a=>a.p==="M").length + data.events.filter(a=>a.p==="M").length;
+    tt.append(el("span","s", mand
+      ? "função opcional — mas se declarada, "+mand+" item(ns) passa(m) a ser obrigatório(s)"
+      : "função opcional — nenhum item obrigatório dentro dela"));
+    head.append(cb,tt,el("span","card-meta", data.attrs.length+" atr · "+data.events.length+" ev"));
+
+    const body = el("div","card-body");
+    const bulk = el("div","bulk");
+    const bNone=el("button","mini","Desmarcar os opcionais"); bNone.type="button";
+    if(mand) bulk.append(el("span","hint","Os "+mand+" item(ns) obrigatório(s) já vêm marcados e travados."));
+    bulk.append(bNone); body.append(bulk);
+
+    if(data.attrs.length){
+      body.append(el("h3","","Atributos"));
+      const ul=el("ul","items"); data.attrs.forEach(a=>attrRow(ul,a,fname,"attr")); body.append(ul);
+    }
+    if(data.events.length){
+      body.append(el("h3","","Eventos"));
+      const ul=el("ul","items"); data.events.forEach(a=>attrRow(ul,a,fname,"event")); body.append(ul);
+    }
+    body.append(el("h3","","Atributos próprios (vendorAttributes)"));
+    body.append(vendorBlock(fname));
+
+    const boxes=()=>[...body.querySelectorAll('input[type=checkbox][data-kind]')].filter(b=>!b.disabled);
+    bNone.onclick=()=>{ boxes().forEach(b=>{b.checked=false; b.dispatchEvent(new Event("change",{bubbles:true}));}); };
+
+    card.append(head,body);
+    head.addEventListener("click",e=>{ if(e.target!==cb) card.classList.toggle("open"); });
+    cb.addEventListener("change",()=>{ card.classList.toggle("on",cb.checked); if(cb.checked) card.classList.add("open"); recount(); });
+    host.append(card);
+  });
+}
+
+function simpleCards(host,list,group){
+  list.forEach(o=>{
+    const card=el("article","card"); const head=el("div","card-head");
+    const cb=el("input"); cb.type="checkbox"; cb.dataset.group=group; cb.dataset.id=o.id;
+    if(o.req){ cb.checked=true; cb.disabled=true; card.classList.add("on");
+               cb.title="Obrigatório pela especificação — não pode ser desmarcado"; }
+    if(o.trig) cb.dataset.trig="1";
+    const tt=el("div","card-title"); tt.append(el("span","t",o.t)); if(o.s) tt.append(el("span","s",o.s));
+    if(o.req) tt.append(el("span","lock","🔒 obrigatório"));
+    const info=el("button","info","i"); info.type="button"; info.setAttribute("aria-expanded","false");
+    info.setAttribute("aria-label","Descrição de "+o.t);
+    head.append(cb,tt,info);
+    const body=el("div","card-body");
+    const d=el("div","desc"); d.style.margin="12px 0 0"; d.innerHTML=o.d; body.append(d);
+    if(o.lim&&o.lim.length){
+      body.append(el("h3","","Limites a informar"));
+      const g=el("div","grid");
+      o.lim.forEach(([k,lbl])=>{ const i=numInput(k); i.dataset.limit=o.id+"."+k; g.append(field(lbl,i)); });
+      body.append(g);
+    }
+    card.append(head,body);
+    info.addEventListener("click",e=>{ e.stopPropagation();
+      const open=card.classList.toggle("open"); info.setAttribute("aria-expanded",open?"true":"false"); d.classList.toggle("show",open); });
+    head.addEventListener("click",e=>{ if(e.target===cb||e.target===info||cb.disabled) return;
+      cb.checked=!cb.checked; cb.dispatchEvent(new Event("change",{bubbles:true})); });
+    cb.addEventListener("change",()=>{ card.classList.toggle("on",cb.checked);
+      if(cb.checked&&o.lim&&o.lim.length) card.classList.add("open"); recount(); checkTriggers(); });
+    host.append(card);
+  });
+}
+
+/* o gateway deve suportar AbsoluteActivePeriod + PELO MENOS UM dos tres com
+   gatilho externo (astro, sensor, astro+sensor) */
+function checkTriggers(){
+  const box=$("#trig-warn"); if(!box) return;
+  const ok=document.querySelectorAll('input[data-trig]:checked').length>0;
+  box.style.display = ok ? "none" : "block";
+}
+
+function recount(){
+  $("#c-fn").textContent=document.querySelectorAll('input[data-fn-inc]:checked').length;
+  $("#c-at").textContent=document.querySelectorAll('input[data-kind="attr"]:checked').length;
+  $("#c-ev").textContent=document.querySelectorAll('input[data-kind="event"]:checked').length;
+  $("#c-vd").textContent=document.querySelectorAll('.vrow').length;
+}
+
+function detailFor(key){
+  const o={};
+  const g=s=>document.querySelector('[data-k="'+key+'.'+s+'"]');
+  const many=s=>[...document.querySelectorAll('[data-k="'+key+'.'+s+'"]:checked')].map(x=>x.value);
+  const lo=g("levels.start"), hi=g("levels.end"), st=g("levels.step");
+  if(lo&&(lo.value!==""||hi.value!=="")){
+    o.commands={levels:[{start:Number(lo.value||0), end:Number(hi.value||0)}]};
+    if(st&&st.value) o.commands.levels[0].step=Number(st.value);
+    const s=many("states"); if(s.length) o.commands.states=s.map(n=>({name:n}));
+    const a=many("cmdattrs"); if(a.length) o.commands.attributes=a;
+  }
+  const tr=g("typeRef"); if(tr&&tr.value) o.types={type:tr.value};
+  const mn=g("minValue"), mx=g("maxValue");
+  if(mn&&mn.value!=="") o.minValue=Number(mn.value);
+  if(mx&&mx.value!=="") o.maxValue=Number(mx.value);
+  const un=g("unit"); if(un&&un.value) o.unit=un.value;
+  const picks=[...document.querySelectorAll('[data-k="'+key+'.enumPick"]:checked')].map(x=>x.value);
+  if(picks.length) o.enumValues=picks;
+  const ev=g("enumValues");
+  if(ev&&ev.value.trim()) o.enumValues=ev.value.split(",").map(s=>s.trim()).filter(Boolean);
+  const ro=g("readOnly"); if(ro&&ro.checked) o.readOnly=true;
+  return o;
+}
+
+function collect(){
+  const val=id=>($(id)?.value||"").trim();
+  const picked=g=>[...document.querySelectorAll('input[data-group="'+g+'"]:checked')].map(c=>c.dataset.id);
+
+  const functions=[];
+  document.querySelectorAll('input[data-fn-inc]:checked').forEach(c=>{
+    const f=c.dataset.fnInc;
+    const attributes=[...document.querySelectorAll('input[data-kind="attr"][data-fn="'+f+'"]:checked')]
+      .map(x=>Object.assign({name:x.dataset.name}, detailFor(f+"."+x.dataset.name)));
+    const events=[...document.querySelectorAll('input[data-kind="event"][data-fn="'+f+'"]:checked')]
+      .map(x=>({name:x.dataset.name}));
+    const vendorAttributes=[...document.querySelectorAll('.vrow')].filter(r=>r.dataset.fn===f).map(r=>({
+      name:r.querySelector('[data-v="name"]').value.trim(),
+      scope:r.querySelector('[data-v="scope"]').value,
+      type:r.querySelector('[data-v="type"]').value
+    })).filter(v=>v.name);
+    const fn={functionId:f.charAt(0).toLowerCase()+f.slice(1)+"01", type:f, attributes, events};
+    if(vendorAttributes.length) fn.vendorAttributes=vendorAttributes;
+    functions.push(fn);
+  });
+
+  const limites={};
+  document.querySelectorAll('input[data-limit]').forEach(i=>{ if(i.value.trim()!=="") limites[i.dataset.limit]=Number(i.value); });
+  const services=picked("servicos").map(id=>{
+    const o={name:id};
+    Object.entries(limites).forEach(([k,v])=>{ const [s,p]=k.split("."); if(s===id) o[p]=v; });
+    return o;
+  });
+
+  return {
+    preenchidoPor:{nome:val("#f-nome")},
+    // payload exatamente como vai no corpo da requisicao — array, conforme o OAS
+    deviceClassesPayload:[ {name:val("#f-classe")||"(sem nome)", functions} ],
+    servicesPayload:services,
+    modosDeControle:picked("modos"),
+    observacoes:val("#f-obs")
+  };
+}
+
+function render(o){
+  const dc=o.deviceClassesPayload[0];
+  const L=[];
+  L.push("LEVANTAMENTO TALQ — FUNÇÕES DO ZENIX (SIP)");
+  L.push("=".repeat(56));
+  L.push("Preenchido por : "+(o.preenchidoPor.nome||"—"));
+  L.push("");
+  L.push("DEVICE CLASS: "+dc.name);
+  if(!dc.functions.length) L.push("  — nenhuma função marcada");
+  dc.functions.forEach(f=>{
+    L.push("");
+    L.push("  "+f.type+"   ("+f.attributes.length+" atributos, "+f.events.length+" eventos)");
+    f.attributes.forEach(a=>{
+      const extra=[];
+      if(a.commands){
+        const lv=a.commands.levels[0];
+        extra.push("níveis "+lv.start+"–"+lv.end+(lv.step?" passo "+lv.step:""));
+        if(a.commands.states) extra.push("estados: "+a.commands.states.map(s=>s.name).join("/"));
+      }
+      if(a.types) extra.push("tipo: "+a.types.type);
+      if(a.minValue!==undefined||a.maxValue!==undefined) extra.push("faixa "+(a.minValue??"")+"–"+(a.maxValue??""));
+      if(a.enumValues) extra.push("valores: "+a.enumValues.join("|"));
+      if(a.readOnly) extra.push("somente leitura");
+      L.push("      - "+a.name+(extra.length?"   ["+extra.join("; ")+"]":""));
+    });
+    f.events.forEach(e=>L.push("      ! "+e.name));
+    (f.vendorAttributes||[]).forEach(v=>L.push("      + "+v.name+"   (vendor, "+v.scope+", "+v.type+")"));
+  });
+  L.push("");
+  L.push("SERVIÇOS DO GATEWAY");
+  if(!o.servicesPayload.length) L.push("  — nenhum marcado");
+  o.servicesPayload.forEach(s=>{
+    const lim=Object.entries(s).filter(([k])=>k!=="name");
+    L.push("  · "+s.name+(lim.length?"":"   (sem limites informados)"));
+    lim.forEach(([k,v])=>L.push("      "+k.padEnd(34)+" = "+v));
+  });
+  L.push("");
+  L.push("MODOS DE CONTROLE");
+  (o.modosDeControle.length?o.modosDeControle:["— nenhum marcado"]).forEach(m=>L.push("  · "+m));
+  if(o.observacoes){ L.push(""); L.push("OBSERVAÇÕES"); L.push("  "+o.observacoes.replace(/\n/g,"\n  ")); }
+
+  const bar="═".repeat(60);
+  L.push(""); L.push("");
+  L.push(bar);
+  L.push(" PAYLOADS PRONTOS — um bloco por requisição");
+  L.push(bar);
+
+  L.push("");
+  L.push("┌─ REQUISIÇÃO 1 ".padEnd(60,"─"));
+  L.push("│ POST /device-classes?clientAddress=<gatewayAddress>");
+  L.push("│ Content-Type: application/json");
+  L.push("│ talq-api-version: 2.6.3");
+  L.push("└".padEnd(60,"─"));
+  L.push(JSON.stringify(o.deviceClassesPayload,null,2));
+
+  L.push("");
+  L.push("┌─ REQUISIÇÃO 2 ".padEnd(60,"─"));
+  L.push("│ POST /services?clientAddress=<gatewayAddress>");
+  L.push("│ Content-Type: application/json");
+  L.push("│ talq-api-version: 2.6.3");
+  L.push("└".padEnd(60,"─"));
+  L.push(JSON.stringify(o.servicesPayload,null,2));
+
+  L.push("");
+  L.push("┌─ NÃO É PAYLOAD ".padEnd(60,"─"));
+  L.push("│ contexto para a equipe de integração, não vai para o protocolo");
+  L.push("└".padEnd(60,"─"));
+  L.push(JSON.stringify({preenchidoPor:o.preenchidoPor,
+                         modosDeControle:o.modosDeControle,
+                         observacoes:o.observacoes},null,2));
+  return L.join("\n");
+}
+
+simpleCards($("#servicos"),SERVICOS,"servicos");
+simpleCards($("#modos"),MODOS,"modos");
+buildFunctions();
+recount();
+checkTriggers();
+
+$("#gen").onclick=()=>{ $("#out").value=render(collect()); $("#out").scrollIntoView({behavior:"smooth",block:"center"}); };
+$("#jump").onclick=()=>$("#resumo").scrollIntoView({behavior:"smooth"});
+$("#copy").onclick=async()=>{
+  if(!$("#out").value) $("#out").value=render(collect());
+  try{ await navigator.clipboard.writeText($("#out").value); $("#copy").textContent="Copiado"; }
+  catch(e){ $("#out").select(); $("#copy").textContent="Selecione e copie"; }
+  setTimeout(()=>$("#copy").textContent="Copiar",1800);
+};
+$("#dl").onclick=()=>{
+  const a=el("a");
+  a.href="data:application/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(collect(),null,2));
+  a.download="levantamento-talq.json"; a.click();
+};
+</script>
+
+</body>
+</html>

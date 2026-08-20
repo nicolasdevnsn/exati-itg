@@ -1,0 +1,29 @@
+[
+  {
+    "address": "93c751e8-2c06-460e-8d68-31f5e4774b43",
+    "name": "ZENIX SIP homolog 001",
+    "class": "NansenZenixClass",
+    "functions": [
+      {
+        "id": "basic-01",
+        "type": "BasicFunction",
+        "swVersion": { "type": "AttributeString", "value": "1.0.0-homolog" }
+      },
+      {
+        "id": "comm-01",
+        "type": "CommunicationFunction",
+        "physicalAddress": { "type": "AttributeString", "value": "00:1B:44:11:3A:B7" },
+        "communicationType": { "type": "AttributeString", "value": "RF mesh (Wi-SUN)" },
+        "communicationFailure": { "type": "AttributeBoolean", "value": false }
+      },
+      {
+        "id": "lamp-01",
+        "type": "LampActuatorFunction"
+      },
+      {
+        "id": "meter-01",
+        "type": "ElectricalMeterFunction"
+      }
+    ]
+  }
+]

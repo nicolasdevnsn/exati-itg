@@ -1,0 +1,34 @@
+[
+  {
+    "name": "ConfigurationService",
+    "supportedProfiles": ["lighting"],
+    "commissioningSupported": false,
+    "devicesPaginationSupported": false
+  },
+  {
+    "name": "ControlService",
+    "supportedTypes": ["AbsoluteActivePeriod", "AstroClockActivePeriod", "FixedControlEffect"],
+    "maximumCalendars": 10,
+    "maximumPrograms": 20,
+    "maxProgramsPerCalendar": 10,
+    "maxSwitchPointsPerProgram": 10,
+    "maxActivePeriodsPerProgram": 4,
+    "dayOffset": 12,
+    "programSecondsSupported": false
+  },
+  {
+    "name": "DataCollectService",
+    "maximumDataLogs": 10,
+    "supportedModes": ["PeriodicRecordingMode", "ImmediateReportingMode"],
+    "samplingAccuracy": 60,
+    "minCollectionTime": 900,
+    "samplingPeriodSupported": true,
+    "attributeScopeSupported": false,
+    "recordingActivePeriodsSupported": false
+  },
+  {
+    "name": "GroupManagementService",
+    "maximumNumberOfGroups": 50,
+    "maximumGroupSize": 500
+  }
+]

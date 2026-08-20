@@ -1,0 +1,3211 @@
+TALQ Specification
+
+APPROVED Version 2.6.3
+
+July 23rd, 2025
+
+The information contained in this document may not be used, published or redistributed without the
+prior written consent of TALQ Consortium.
+______________________________________________________________
+TALQ Specification  Version 2.6.3
+
+About TALQ
+
+The TALQ Consortium has developed a global standard protocol to enable Central Management
+Software to configure, control, command and monitor multiple Outdoor Device Networks from
+various suppliers through an easy-to-integrate RESTful/JSON protocol. TALQ is open to industry
+members to join and participate in the evolution of the TALQ Protocol.
+TALQ also provides a Partner Program for cities, municipalities, utilities and consultants to
+contribute to the future of the Smart City. To learn more about us, our members and partners,
+please visit
+www.talq-consortium.org
+
+Copyright
+
+This document is published by the TALQ Consortium. All rights are reserved. Reproduction in whole
+or in part is prohibited without express and prior written permission of the TALQ Consortium. TALQ
+is a trademark owned by the TALQ Consortium.
+
+About this document
+
+This document helps TALQ members understand the technical specifications of the TALQ Smart City
+Protocol. The complete technical description of the TALQ Smart City Protocol is made of:
+
+    · This document,
+    · The TALQ Open API file that describes the RESTful API to be implemented in a Central
+
+         Management Software to make it TALQ-compatible,
+    · The TALQ Open API file that describes the RESTful API to be implemented in the Gateway of
+
+         an Outdoor Device Network to make it TALQ-compatible,
+    · The Open API file that describes the TALQ data model in detail,
+    · The list of TALQ functions and Attributes available on the TALQ web site.
+
+The above material is available in the members' area of the TALQ Consortium website.
+In case of any conflicting information between the above files, the Open API files supersede this
+document.
+For any further explanation of the contents of this document, or in case of any perceived
+inconsistency or ambiguity of interpretation, please contact the TALQ Consortium:
+
+    · eMail: info@talq-consortium.org
+    · Web site: talq-consortium.org
+
+Disclaimer
+
+The information contained herein is believed to be accurate as of the date of publication,
+however the copyright holder will not be liable for any damages, including indirect or
+consequential from use of or reliance on the accuracy of this document.
+
+If you have any questions regarding the content of this document, please contact the TALQ
+consortium at info@talq-consortium.org
+
+Terms of use
+
+The document is created and maintained by the TALQ Consortium. Use of this document is
+governed by the TALQ Consortium Agreement, under which this document has been obtained.
+
+                                   2 of 66
+TALQ Specification  Version 2.6.3
+
+Table of Contents
+
+1 About TALQ, the Smart City Protocol .....................................................................................6
+   1.1 The Challenge....................................................................................................................... 6
+   1.2 TALQ, the Smart City Protocol ............................................................................................. 7
+   1.3 TALQ, a flexible Smart City Device Data Model ................................................................... 8
+   1.4 TALQ, a RESTful and JSON architecture ............................................................................. 11
+   1.5 The TALQ Certification Program ........................................................................................ 12
+
+2 Definitions and conventions ................................................................................................13
+   2.1 Definitions .......................................................................................................................... 13
+   2.2 Abbreviations ..................................................................................................................... 14
+   2.3 Conventions ....................................................................................................................... 14
+
+3 TALQ Architecture ...............................................................................................................16
+   3.1 RESTful architecture........................................................................................................... 16
+   3.2 Bidirectional communication ............................................................................................. 16
+   3.3 Address of the Gateway and the CMS ............................................................................... 17
+   3.4 TALQ RESTful API................................................................................................................ 17
+   3.5 HTTP options and constraints ............................................................................................ 19
+      Version ....................................................................................................................................... 20
+      HTTP Headers............................................................................................................................. 20
+      HTTP Response Codes ................................................................................................................ 21
+      HTTP Request tracking ............................................................................................................... 21
+   3.6 Security .............................................................................................................................. 22
+
+4 TALQ Data Model.................................................................................................................23
+   4.1 TALQ devices ...................................................................................................................... 23
+   4.2 TALQ functions ................................................................................................................... 24
+   4.3 TALQ services ..................................................................................................................... 35
+      Configuration service ................................................................................................................. 35
+      On-demand read service............................................................................................................ 35
+      Control service ........................................................................................................................... 35
+
+                                                                                                                                                                                3 of 66
+TALQ Specification  Version 2.6.3
+
+      Group management service....................................................................................................... 36
+      Data collection service ............................................................................................................... 36
+      Data package transfer service.................................................................................................... 36
+   4.4 TALQ resources .................................................................................................................. 37
+      TALQ Addresses ......................................................................................................................... 37
+      Resources ................................................................................................................................... 37
+   4.5 TALQ Types......................................................................................................................... 38
+5 TALQ Use Cases ...................................................................................................................40
+   5.1 TALQ bootstrap process ..................................................................................................... 40
+      Step 1: Gateway announcement................................................................................................ 40
+      Step 2: Services announcement................................................................................................. 42
+      Step 3: Device class announcement........................................................................................... 42
+      Resynchronizing a Gateway ....................................................................................................... 44
+   5.2 Announcing devices ........................................................................................................... 46
+   5.3 Creating a device in a Gateway .......................................................................................... 47
+   5.4 Creating a group................................................................................................................. 48
+   5.5 Reporting log values........................................................................................................... 49
+      Configuring a data logger........................................................................................................... 49
+      Active periods ............................................................................................................................ 51
+      Reporting log values .................................................................................................................. 53
+      Asking for a log report ............................................................................................................... 54
+   5.6 Sending an override command .......................................................................................... 55
+   5.7 Reading attribute values .................................................................................................... 56
+   5.8 Assigning a control program to a group of devices............................................................ 57
+      Creating a control program........................................................................................................ 57
+      Creating a calendar .................................................................................................................... 61
+      Assigning a calendar to devices ................................................................................................. 62
+   5.9 Sending a firmware update................................................................................................ 63
+   5.10 Reading a partial list of devices.......................................................................................... 63
+6 References...........................................................................................................................65
+   6.1 Normative references ........................................................................................................ 65
+   6.2 Informative references ...................................................................................................... 65
+
+                                   4 of 66
+TALQ Specification  Version 2.6.3
+
+                                   5 of 66
+TALQ Specification  Version 2.6.3
+
+1 ABOUT TALQ, THE SMART CITY PROTOCOL
+
+1.1 The Challenge
+
+Every day a new Smart City project is announced: streetlights are being connected to save energy
+and increase the quality of lighting services in the streets, waste containers are being monitored to
+reduce truck traffic whilst helping cities to get cleaner, free parking spaces are detected and
+advertised to drivers both to reduce
+pollution and to allow variable pricing
+depending on their availability, and more.
+Most of the available solutions, however,
+are proprietary, locking cities into single
+vendor solutions. Thanks to the TALQ Smart
+City Protocol, cities can now choose and
+adopt control solutions from multiple
+vendors and control them all through a
+single Central Management Software.
+The TALQ Smart City Protocol is an
+application interface to exchange data,
+commands and programs between one or
+more Central Management Software (CMS)
+and Outdoor Device Networks (ODNs) from
+different vendors to enable configuration,
+control, command and monitoring of
+connected devices in the city.
+Today's challenge is the complexity associated with multiple proprietary systems and interfaces.
+The lack of standards makes controlling different connected devices and smooth deployment of
+various systems for different applications across a region or city very difficult.
+
+                    Centrally Managed Smart City System without TALQ
+
+                                                                      6 of 66
+TALQ Specification  Version 2.6.3
+
+1.2 TALQ, the Smart City Protocol
+
+The TALQ Consortium develops and manages the TALQ Smart City Protocol. The TALQ Smart City
+Protocol defines the message types, data format, parameters and behavior of CMS and Gateways,
+to configure, control, command and monitor different types of connected devices on various ODNs.
+As illustrated in the drawing below, TALQ does not constrain the protocols and network
+implementation of the ODN itself but provides a common interface between an interface to an
+ODN, called the Gateway, and a CMS.
+
+                                      Centrally Managed Smart City System with TALQ
+
+The TALQ Smart City Protocol is designed to offer the following main benefits:
+
+    · TALQ offers a flexible data model that is applicable to a wide range of sectors and use
+         cases, such as outdoor lighting control, waste collection, parking space detection,
+         environmental data collect, energy management and more. With TALQ, vendors are free to
+         describe their devices thanks to TALQ functions that include a set of agreed configuration,
+         operational and metering attributes and events, which can be configured, controlled,
+         commanded and monitored using TALQ services.
+
+    · TALQ covers a broad set of services, not only data collection but also configuration services,
+         dynamic control programs and manual overrides, on-demand read service, group management and
+         firmware updates.
+
+    · TALQ is based on well-known standards to be easy to implement. The standard RESTful
+         approach adopted by TALQ makes it easy to integrate both in existing CMS and Gateways.
+         To enable configuration, control, command and monitoring from a CMS, the TALQ Smart
+         City Protocol provides secured HTTP REST GET, PUT, POST, PATCH and DELETE requests and
+         associated JSON data payloads to describe the devices, their functions and attributes.
+
+                                                                                                                                                                                7 of 66
+TALQ Specification  Version 2.6.3
+
+· TALQ provides a comprehensive certification program and associated test tools which are
+    valuable both for vendors during their implementation process and for end-customers to
+    make sure products are fully interoperable.
+
+1.3 TALQ, a flexible Smart City Device Data Model
+
+To support many Smart City use cases, including, but not limited to, outdoor lighting control, waste
+collection, parking space detection, environmental data collect and energy management, the TALQ
+model:
+
+· provides a whole range of services, not limited to data collect but also including remote
+     control, device configuration, schedulers and calendars, firmware update and more, and
+
+· enables vendors to describe any type of device using functions, attributes and events, while
+     being obvious to understand for Central Management Software.
+
+A TALQ device is made of a set of functions which represents the capabilities of a physical device.
+Vendors are free to model their physical device using the existing TALQ functions and their
+attributes and events. They can also use the TALQ generic functions or design their own function,
+attributes and events by extending existing ones. The diagram below shows typical devices that can
+be built up as a set of functions. Each function has four types of attributes: configuration,
+operational (i.e. commands), metering and status (corresponding to events).
+
+                                                                                                                                                                                8 of 66
+TALQ Specification  Version 2.6.3
+
+Experts in new smart city vertical segments are welcome to work with experts from the TALQ
+consortium to understand how their use cases and devices can map onto the TALQ device data
+model. It is likely that this will simply require new functions with associated attributes and events.
+The set of services available in TALQ is comprehensive and designed in a flexible way to support
+many different use cases.
+
+                                                                                l
+                    Format to propose a new vendor-specific function
+
+                                                                                                                                                      9 of 66
+TALQ Specification  Version 2.6.3
+
+Thanks to its flexible device data model, TALQ can already be used to provide interoperability
+between Central Management Software and suppliers' outdoor device networks in quite some
+smart city vertical markets, as well as allow them to cover multiple smart city applications within a
+single platform.
+
+                                   10 of 66
+TALQ Specification  Version 2.6.3
+
+1.4 TALQ, a RESTful and JSON architecture
+
+The TALQ 2.0 Smart City Protocol is based on a RESTful architecture and a JSON data model
+representation, because of their inherent simplicity of implementation. The protocol is described in
+this technical specification document as well as three Open API v3 (OAS 3) files which describe both
+the RESTful CMS and Gateway APIs and the JSON data model. Software developers can easily
+generate documentation or their source code using Open API tools (e.g. Swagger) and support
+TALQ in their CMS or Gateway.
+
+The figure below illustrates some typical exchanges between CMS and Gateway as examples of
+TALQ protocol operation:
+
+· The Bootstrap & Discovery process that enables a new Gateway to be connected to a CMS
+
+CMS                                                                                 Gateway
+
+                    TLS Security Checks
+
+                       HTTPs REST POST request to announce the new Gateway
+                             HTTPs answer to assign a unique TALQ address
+
+     HTTPs REST POST request to announce service capabilities supported by the ODN
+                                       HTTPs answer to acknowledge
+
+     HTTPs REST POST request to announce the device classes supported by the ODN
+                                       HTTPs answer to acknowledge
+
+· The Data Collect Service that allows log data to be sent to the CMS from one or more or a
+    group of devices deployed in the field:
+
+CMS                     HTTPs REST POST request with JSON payload containing        Gateway
+                    log values and time stamps for many attributes of many devices
+
+                                           HTTPs answer to acknowledge
+
+                                                                                    11 of 66
+TALQ Specification  Version 2.6.3
+
+· The override control that allows an end-user to send a command to a device through the
+    Gateway.
+
+CMS  HTTPs REST PUT request with JSON payload containing device/group addresses, Gateway
+
+              functions, attribute, command (e.g. targetLightCommand = 77%)
+
+                                     HTTPs answer to acknowledge
+
+1.5 The TALQ Certification Program
+
+The TALQ Consortium has set up a Certification Program with transparent procedures and a TALQ
+Test Tool to ensure full
+interoperability between a TALQ
+compatible CMS and a TALQ
+compatible Gateway. TALQ
+Members can challenge their own
+CMS or Gateway with the TALQ
+Test Tool until their
+implementation of the TALQ Smart
+City Protocol is successful. TALQ
+plugfest sessions allow the
+members to test their solution in
+collaboration with solutions from
+other vendors.
+Official certification of TALQ
+compliance is awarded by the TALQ
+Certification Workgroup shortly
+after companies submit all of the
+necessary test result files and declarations for certification.
+Certified TALQ compliant products are identified by the TALQ symbol and listed on the TALQ
+website.
+
+                                   12 of 66
+TALQ Specification  Version 2.6.3
+
+2 DEFINITIONS AND CONVENTIONS
+
+2.1 Definitions
+
+Many words and phrases which carry a special meaning in the context of this document are
+defined in this section:
+
+    · Central Management Software (CMS): An application which communicates with ODNs to
+         enable remote configuration, control, command and monitoring of smart city connected
+         devices.
+
+    · Outdoor Device Network (ODN): A network of connected physical devices (e.g. Light
+         Point Controllers, Waste Container Sensors, Parking Place Detectors, Air Pollution Sensors,
+         etc.).
+
+    · Gateway: An application that provides access to ODN devices using the TALQ Smart City
+         Protocol.
+
+    · Device: A logical representation of a physical device that is controlled and managed by
+         the CMS using the TALQ Smart City Protocol. A device implements a set of functions and is
+         uniquely identifiable within the ODN. The vendor is free to define its device with TALQ
+         functions. The vendor may use more than one device to describe a physical device or
+         gather multiple physical devices within one single device.
+
+    · Function: A group of attributes and events that describes particular functionality within a
+         device. Some function types can be instantiated more than once in the same device.
+
+    · Attributes:
+             o Configuration attributes are attributes that describe a device's capabilities and
+                  characteristics. They include configuration parameters that determine how specific
+                  features are implemented or executed in the device. For instance,
+                  temperatureHighThreshold in a temperature sensor will determine when the
+                  temperature sensor will trigger a temperatureTooHigh event.
+             o Operational attributes are attributes that can be used to remotely command the
+                  device. The targetLightCommand (used to command a lamp to a particular value)
+                  in a lamp actuator is a typical example of an operational attribute.
+             o Metering attributes provide performance data about specific functions in the
+                  device. Energy, active power, supply voltage and current are examples of metering
+                  attributes that may be available in functions such as an electrical meter and a lamp
+                  monitor.
+             o Status attributes can be associated with some TALQ events and may be used to
+                  retrieve the result of the preceding event. Implementation of status attributes is
+                  optional. To avoid duplication these attributes are not explicitly described in this
+                  document, but if implemented they shall be of Boolean type and have the same
+                  name as the corresponding type of event.
+
+    · Events are messages that are generated by a Gateway to notify a CMS about an event
+         such as a failure or a change. temperatureTooHigh is a typical event used to inform the
+         CMS that the temperature metering attribute of a temperatureSensor function in a device
+         is above its temperatureHighThreshold configuration attribute.
+
+                                   13 of 66
+TALQ Specification  Version 2.6.3
+
+2.2 Abbreviations
+
+This section provides a list of acronyms and abbreviations used in this document:
+
+    · CMS: Central Management Software
+    · MAC: Message Authentication Code
+    · NTP: Network Time Protocol
+    · OID: Object Identifier
+    · ODN: Outdoor Device Network
+    · HTTP: Hypertext Transfer Protocol
+    · TCP: Transmission Control Protocol
+    · TLS: Transport Layer Security
+    · UDP: User Datagram Protocol
+    · URI: Uniform Resource Identifier
+    · UUID: Universally Unique IDentifier
+    · URL: Uniform Resource Locator
+    · JSON: JavaScript Object Notation
+    · RSA: Public-key cryptography algorithm that is based on the factoring problem. RSA
+
+         stands for Ron Rivest, Adi Shamir and Leonard Adleman, who first publicly described the
+         algorithm in 1977 [RSA78].
+
+2.3 Conventions
+
+MUST: This word, or the terms "REQUIRED" or "SHALL", mean that the definition is an absolute
+requirement of the specification.
+MUST NOT: This phrase, or the phrase "SHALL NOT", mean that the definition is an absolute
+prohibition of the specification.
+SHOULD: This word, or the adjective "RECOMMENDED", mean that there may exist valid reasons
+in particular circumstances to ignore a particular item, but the full implications must be
+understood and carefully weighed before choosing a different course.
+SHOULD NOT: This phrase, or the phrase "NOT RECOMMENDED" mean that there may exist
+valid reasons in particular circumstances when the particular behavior is acceptable or even
+useful, but the full implications should be understood and the case carefully weighed before
+implementing any behavior described with this label.
+MAY: This word, or the adjective "OPTIONAL", mean that an item is truly optional. One vendor
+may choose to include the item because a particular marketplace requires it or because the
+vendor feels that it enhances the product while another vendor may omit the same item. An
+implementation which does not include a particular option MUST be prepared to interoperate
+with another implementation which does include the option, though perhaps with reduced
+functionality. In the same vein an implementation which does include a particular option MUST
+be prepared to interoperate with another implementation which does not include the option
+(except, of course, for the feature the option provides).
+Mandatory (M) and Optional (O) features (attributes, events and services) are defined for the
+CMS and for the Gateway. Mandatory attributes, events and services shall be used to implement
+the functionality as specified, although how this data is used is outside the scope of the
+specification. Both CMS and Gateway shall accept optional attributes and vendor specific
+
+                                   14 of 66
+TALQ Specification  Version 2.6.3
+
+attributes/events (i.e. not trigger an error when receives such attributes/events) but they are not
+required to implement corresponding functionality.
+
+                                   15 of 66
+TALQ Specification   Version 2.6.3
+
+3 TALQ ARCHITECTURE
+
+3.1 RESTful architecture
+
+The TALQ Smart City Protocol is a bidirectional protocol based on RESTful architecture with JSON
+data payload that relies on underlying standardized data transport, security and network services
+(HTTP, TLS, TCP and IP) to establish communication between CMS and Gateways, as described
+below:
+
+                     TALQ Smart City Protocol
+
+                       RESTful and JSON payload
+
+                               HTTP + TLS
+
+                     TCP
+
+                                                                 IP
+
+                                                  Data Link / Physical Layers
+                                                    Implementation specific
+
+3.2 Bidirectional communication
+
+REST is a common way to structure Web Service APIs. But REST is unidirectional while many Smart
+City markets require a bidirectional communication pipeline to allow remote control/command,
+device configuration, device monitoring and other data exchange. For instance, a CMS may need to
+send a command to turn on a light while a sensor may need to send a temperature reading to a
+CMS. A TALQ protocol implementation shall support bidirectional communication by providing an
+HTTP server at both ends of the communication pipeline as described below.
+
+    CMS                  CMS RESTful API          Gateway
+HTTP Server          Gateway RESTful API         HTTP Client
+
+HTTP Client                                      HTTP Server
+
+TALQ RESTful implementation to provide bidirectional communication
+
+                                                                    16 of 66
+TALQ Specification  Version 2.6.3
+
+3.3 Address of the Gateway and the CMS
+
+A CMS may configure, control, command and monitor many devices through many Gateways. On
+the other hand, a Gateway may also interface to more than one CMS. For the purpose of uniquely
+identifying the demanding party (CMS or Gateway), clients must include a REST parameter
+named "clientAddress" in each REST request. The "clientAddress" shall be the TALQ Address of
+the entity sending the REST request (Gateway or CMS). Below is an example of a properly
+formatted REST request where the Gateway's TALQ address is "133a8753-e34c-332p5-b543-
+577755648453":
+
+Request URL:
+https://<cmsUri>/devices/<deviceAddress>/temperatureSensor/temperature?clientAddress=133a8753-e34c-
+332p5-b543-577755648453
+Request Method: GET
+Status Code: "200 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+
+The Gateway address shall be created and assigned by the CMS as the first step of the bootstrap
+process (refer to section 5.1 for more details of the bootstrap process). The CMS and Gateway
+addresses must be Universally Unique IDentifiers (UUID). The method through which the CMS
+determines its own TALQ address is not in the scope of TALQ.
+
+3.4 TALQ RESTful API
+
+The address of any resource presented by the CMS and Gateways shall use the standard URI
+syntax specific to HTTP/1.1 as per [RFC 1630], [RFC 1738], and [RFC 1808]. Formally defined and
+registered URN namespace definitions are recommended to address the application level
+resources as referenced in [RFC 2717], and [RFC 1808].
+To support bidirectional communication, the CMS and the Gateway shall both run a HTTP Server
+and HTTP Client, providing a RESTful API to the other party. The "cmsUri" (base URI used to
+communicate with the CMS) and "gatewayUri" (base URI used to communicate with the
+Gateway) should always end with a slash "/" although both endpoints must accept URIs with or
+without it. All other URIs are relative.
+The meaning of the HTTP REST verbs is defined as follows:
+
+       HTTP verb                                               Meaning
+                    Fetches the representation of a resource, without modifying it.
+GET                 Creates a new resource from a provided representation of the resource
+POST
+
+PUT                 Replaces the entire existing device definition. For the function array this
+PATCH               will mean the existing device functions will be replaced with those specified
+                    in this call.
+
+                    Partially updates the existing device definition. For the function array each
+                    element passed in will be cross-referenced against items in the existing
+                    function array using the id. If they match, the existing function will be
+
+                                                                                                                                     17 of 66
+TALQ Specification                     Version 2.6.3
+
+                                       updated. If there is no match the function will be added. To remove
+                                       functions from the array, see `PUT', where an empty or reduced function
+                                       array can be passed in.
+
+DELETE                                 Deletes the resource from the system.
+
+Here are some examples of the TALQ URI structure to get, create, update and delete resources by
+the Gateway on the CMS or by the CMS on the Gateway:
+
+        Objective                                     RESTful API (URL)
+
+Get the list of all the devices that   HTTP GET
+exist in the Gateway, their functions  https://<gatewayUri>/devices?clientAddress=<cmsAddress>
+and attributes                         The answer shall be a HTTP Response Code 200 with a JSON payload
+                                       providing the list of devices, functions, attributes.
+Get the list of functions and
+attributes for one particular device   HTTP GET https://<gatewayUri>/devices/<deviceAddress>?clientAddress=
+in the Gateway                         <cmsAddress>
+                                       The answer shall be a HTTP Response Code 200 with a JSON payload
+Set the value of a list of             providing the list of functions and attributes from this device.
+configuration attributes of a device
+on a Gateway                           HTTP PATCH
+                                       https://<gatewayUri>/devices/<deviceAddress>?clientAddress=<cmsAddress>
+                                       associated with a JSON payload to list the values to set. The answer shall be a
+                                       HTTP Response Code 202.
+
+                                       Note: in the case of a function array, each array element passed
+                                       in will be used to update any existing element with the same
+                                       function id. If there is no existing element with the same function
+                                       id, one will be added.
+
+Report a list of log values from one   HTTP POST
+device by a Gateway to the CMS         https://<cmsUri>/log-report?clientAddress=<gatewayAddress>
+                                       associated with a JSON payload to list the log values to report. The answer
+                                       shall be a HTTP Response Code 201.
+
+                                                                                     or
+                                       HTTP POST
+                                       https://<cmsUri>/devices?clientAddress=<gatewayAddress>
+                                       associated with a JSON payload to list the log values if they relate only to
+                                       devices' attributes and events. The answer shall be a HTTP Response Code
+                                       201.
+
+Read a particular metering attribute   HTTP GET
+(supplyVoltage) on one device by       https://<gatewayUri>/devices/<deviceAddress>/<lampMonitorAddress>/supplyVolta
+the CMS                                ge?clientAddress=<cmsAddress>
+                                       The answer shall be a HTTP Response Code 200 with a JSON payload
+                                       providing the attribute value.
+
+Set the value of one particular        HTTP PUT
+attribute of a device in the Gateway   https://<gatewayUri>/devices/<deviceAddress>/<lampActuatorAddress>/lampTypeId
+                                       ?clientAddress=<cmsAddress>
+                                       associated with a JSON payload to set the new value of lampTypeId attribute.
+                                       The answer shall be a HTTP Response Code 201.
+
+                                       Note: PUT may be used to remove functions from a function
+                                       array.
+
+Create a list of devices in the CMS    HTTP POST
+                                       https://<cmsUri>/devices?clientAddress=<gatewayAddress>
+                                       associated with a JSON payload to provide the device list and their
+                                       functions/attributes. The answer shall be a HTTP Response Code 201.
+
+                                                                                                            18 of 66
+TALQ Specification                Version 2.6.3
+
+Delete a device in the CMS        HTTP DELETE
+                                  https://<cmsUri>/devices/<deviceAddress>?clientAddress=<gatewayAddress>
+                                  The answer shall be a HTTP Response Code 200.
+
+Add a list of new calendars in a  HTTP POST
+Gateway                           https://<gatewayUri>/calendars?clientAddress=<cmsAddress>
+                                  associated with a JSON payload to list the content of the calendars. The
+                                  answer shall be a HTTP Response Code 201.
+
+When a RESTful request includes a list of objects or any other entity, and one of them triggers an
+error (e.g. it does not exist) , the whole request is rejected. For example, a PUT/devices with a list
+of devices, where one of them does not exist at the target endpoint, shall be rejected with a HTTP
+error code 404.
+The default TALQ namespace URI is http://talq-consortium.org/talq.json. The reference is
+http://json-schema.org/specification.html
+The following sections provide examples of RESTful API and associated JSON payload to perform
+some of the possible TALQ actions between a CMS and a Gateway.
+The detailed RESTful API and associated JSON schema are available in three OpenAPI v3 files
+published in the members' area of the TALQ Consortium website:
+
+· [date]-talq-api-cms-[MAJOR-MINOR-PATCH].json describes the RESTful API provided by the
+    CMS
+
+· [date]-talq-api-gateway-[MAJOR-MINOR-PATCH].json describes the RESTful API provided by
+    the Gateway.
+
+· [date]-talq-data-model-[ MAJOR-MINOR-PATCH].json describes all object types that are used
+    by both RESTful APIs, CMS and Gateway.
+
+A TALQ Protocol implementation shall include all mandatory features described in those files and
+may include one or more optional features.
+Given a version number MAJOR-MINOR-PATCH, the:
+
+· MAJOR version increments when incompatible API changes have been made,
+· MINOR version increments when new functionality in a backwards-compatible manner
+
+    has been added, and
+· PATCH version increments when backwards-compatible bug fixes have been made.
+
+The functions and attributes that compose devices are listed in detail in the OAS files. In case of any
+incompatibility or ambiguity between this document and the above listed OpenAPI files, the
+OpenAPI files shall prevail.
+
+3.5 HTTP options and constraints
+
+This Section describes how HTTP shall be used in the TALQ Smart City Protocol.
+
+                                                                                                           19 of 66
+TALQ Specification  Version 2.6.3
+
+Version
+
+The use of HTTP version 1.1 [RFC2616] is mandatory. It enables reuse of the underlying transport
+connection for multiple requests.
+
+HTTP Headers
+
+This section describes the HTTP headers that shall be supported in a TALQ Smart City Protocol
+implementation. Other headers not mentioned in this specification may be used for other
+purposes such as security.
+
+Topic               Comment
+host
+content-length      Mandatory in HTTP 1.1. It is used for hosting multiple domains on the same IP address.
+content-type
+content-encoding    All entities (requests and responses) shall have an explicit Content-Length header. This
+                    implicitly prevents use of the chunked transfer encoding.
+accept-encoding
+connection          All JSON entities (requests and responses) shall have a Content-Type header with value
+cache-control       "application/json". "UTF-8" shall be the charset to be used in all TALQ data exchanges.
+resync
+                    The following are permitted for all entities (requests and responses):
+                         · No Content-Encoding header
+                         · Content-Encoding: deflate
+                         · Content-Encoding: gzip
+
+                    No other content-ending may be used.
+                    The three encoding options listed above are mandatory for the server (Gateway or CMS).
+                    If a request uses a content encoding that is not supported by the server, the server shall
+                    return a response code 415 (Unsupported Media Type). See Section 14.11 of [RFC2616].
+                    Note that this application is slightly different from how a typical web browser would
+                    work. A web browser would send an Accept-Encoding header in the request with the
+                    methods it can support, and the server has the choice to send the response back
+                    compressed or uncompressed. As the TALQ Smart City Protocol is designed to transmit
+                    large amounts of data, it is necessary to support a way to also compress those requests.
+                    Thus, the server shall always answer with the encoding option indicated in the client
+                    request.
+
+                    This header may be used in the Data Package Transfer Service to indicate the encoding
+                    option accepted by the Gateway, which can be either gzip or deflate.
+
+                    The TCP connection is kept open by default with HTTP 1.1. The connection header may
+                    be used in either a request or response to indicate that the underlying transport
+                    connection shall not be reused after the current request is executed. See Section 14.10 of
+                    [RFC2616].
+
+                    In case HTTP is used without TLS (see section 3.6) there may be HTTP proxies between
+                    the CMS and the Gateway. Requests are not cached but can be transformed by a proxy.
+                    Responses can be cached and transformed. A cache-control header equal to "no-
+                    transform" shall be added to both requests and responses.
+
+                    This header may be used by the Gateway in the Data Package Transfer Service to request
+                    a part of a package to recover from an aborted download. The unit type used for the
+                    range header shall be "bytes".
+
+                                   20 of 66
+TALQ Specification                                 Version 2.6.3
+
+content-range               This header shall be used by the CMS in the Data Package Transfer Service to respond to
+talq-api-version            a Gateway request including the range header. The CMS shall always include a content-
+                            range header reflecting the data sent and always including an explicit instance length.
+                            The unit type shall be "bytes".
+
+                            This header shall be used by the CMS and Gateway to identify the supported version of
+                            TALQ REST requests.
+
+                            When two systems with different MINOR versions are connected, the system with the
+                            higher MINOR version must adapt its requests and responses to the lower version API
+                            announced by the other endpoint.
+
+HTTP Response Codes
+
+All use of HTTP response codes shall be compliant with the standard [RFC 2616]:
+
+Code                               Message                        Typical Usage
+
+200               OK                                              GET - DELETE
+                                                                  POST ­ PUT
+201               Created                                         POST ­ PUT ­ PATCH
+                                                                  GET ­ PUT ­ PATCH
+202               Accepted                                        GET
+                                                                  GET ­ POST ­ PUT - PATCH
+204               No content
+                                                                  GET ­ POST ­ PUT - PATCH
+206               Partial content
+                                                                  POST ­ GET ­ PUT ­ PATCH ­ DELETE
+301               Moved Permanently
+                                                                  POST ­ GET ­ PUT - PATCH ­ DELETE
+307               Temporary Redirect                              POST ­ GET ­ PUT - PATCH ­ DELETE
+
+400               Bad Request                                     GET ­ PUT ­ PATCH ­ DELETE
+                                                                  POST ­ PUT
+401               Unauthorized                                    POST ­ GET ­ PUT ­ PATCH ­ DELETE
+                                                                  POST
+403               Forbidden                                       POST ­ GET ­ PUT ­ PATCH ­ DELETE
+                                                                  POST ­ GET ­ PUT ­ PATCH ­ DELETE
+404               Not found
+
+409               Conflict
+
+415               Unsupported Media Type
+
+416               Requested Range Not Satisfiable
+
+429               Too Many Requests
+
+5xx               Unknown Error
+
+All messages described in the HTTP RESTful standard may be used. Specific error messages appear
+in the OAS files.
+
+HTTP Request tracking
+
+Two query parameters are used for request tracking:
+
+     · talqRequestId: Unique request identifier created by the CMS/Gateway as client.
+     · talqOriginRequestId: Origin request identifier that caused the current request.
+
+With each request, the client will generate a unique "talqRequestId" that will be added to the query
+parameters. Furthermore, if appropriate, a "talOriginRequestId" will be included also to relate the
+current request with a previous request that may originated it, e.g.: a PATCH request related to a
+previous PUT request.
+
+                                                                                                     21 of 66
+TALQ Specification  Version 2.6.3
+
+3.6 Security
+
+The selection of HTTP/1.1 as the default application data exchange protocol between Gateways
+and CMS leads to TLS for providing a secure channel for the communication. The TLS Handshake
+Protocol provides mutual authentication based on digital certificates derived from a trusted
+Certificate Authority or self-signed certificates, so that not only the server but also the client can
+be authenticated. The TLS Record Protocol provides encryption and message authentication of
+the application data to prevent eavesdropping, tampering or message forgery.
+TLS support is mandatory in both CMS and Gateway. Vendors may be required to disable it to run
+tests and to support non-production environments.
+All transactions between the Gateway and CMS shall be based on HTTP over TLS [RFC 2818] using
+TLS version 1.2 [RFC 5246] or later versions of TLS (e.g. version 1.3 [RFC 8446]) if implemented in
+both CMS and Gateway.
+The TALQ Specification does not specify how the trust infrastructure is defined or how that trust
+infrastructure is established in installed systems. This is the responsibility of the entities that
+deliver the operational system.
+Security within the ODN is outside the scope of the TALQ Specification and is the responsibility of
+the ODN supplier.
+As described in section 4.1, an implementation of TALQ may control access to certain entities if
+multiple CMS may be connected; the indicated clientAddress may be used, or (for example) a
+vendor may choose to employ a token / API key in an HTTP header of TALQ messages.
+
+                                   22 of 66
+TALQ Specification                                                               Version 2.6.3
+
+4 TALQ DATA MODEL
+
+4.1 TALQ devices
+
+The TALQ data model enables vendors of smart city connected physical devices to describe their
+devices using TALQ functions, each function having attributes and events that can be read (GET),
+sent or set (PUT, PATCH, POST) by the Gateway or the CMS. TALQ enables any CMS connected to
+a Gateway to have such access to all functions and devices. However, a TALQ implementation
+shall prevent access to a Gateway Function related to the connection of a different CMS. A TALQ
+Gateway may also prevent or limit some other access, for example limit control of certain
+actuators to a subset of connected CMS. Any measures to limit access are outside the scope of
+TALQ, see section 3.6.
+TALQ functions, and their attributes and events, are defined by the TALQ Consortium and
+described in detail in the OAS files associated to this document. When using a TALQ function to
+describe a device the vendor shall implement each mandatory attribute and event of this TALQ
+function and may implement one or more of the optional attributes and events.
+Here are some examples of possible devices and the functions that could compose them:
+
+Light Point Controller from Vendor A                                             Light Point Controller from Vendor B
+                 DEVICE                                                                           DEVICE
+                                       TALQ Function
+TALQ Function TALQ Function  Basic                                    Lamp       TALQ Function TALQ Function  Basic    TALQ Function TALQ Function    Lamp
+                                                                    Actuator                                                                        Actuator
+
+                                                                                                                                                        1
+
+                              Lamp                                                                             Lamp                                   Lamp
+                             Monitor                                                                          Monitor                               Actuator
+
+                                                                                                                                                        2
+
+                             Environment Sensor                                                               Waste Monitoring Sensor
+                                                                                                                          DEVICE
+                                    DEVICE                                       TALQ Function TALQ Function           TALQ Function TALQ Function
+TALQ Function TALQ Function            TALQ Function TALQ Function
+                             Basic                                  Particulate                               Basic                                   Fill
+                                                                      Matter                                                                        Sensor
+                                                                      sensor
+
+                             Humidity                               Tempe-                                    Battery                               Movemen
+                              Sensor                                rature                                     Level                                 t Sensor
+                                                                    Sensor                                    Sensor
+
+                                                                                                                                                               23 of 66
+TALQ Specification            Version 2.6.3
+
+BUS STOP                                     Parking Sensor
+DEVICE                                        DEVICE
+Vendor Specific TALQ Function
+                      TALQ Function TALQ FunctionBasicElectricBasic                                      Battery
+                                                                    TALQ Function TALQ FunctionMeter      Level
+                                                                                                         Sensor
+                                                                                          TALQ Function
+  Info               Lamp                    Presence
+Message             Actuator                  Sensor
+
+  Panel
+
+The Gateway supplier shall define its own device classes following the format and constraints
+defined by the TALQ Smart City Protocol. The definition of device classes is used in the
+configuration service as a way to announce device capabilities (i.e. supported functions, attributes
+and events) with minimal data transfer overhead. Once a device class is announced, other device
+instances can be announced without repeating the complete device description.
+When a new class of device is defined by a vendor to best describe its device, it should, where
+possible, comprise TALQ-defined functions to maximize interoperability. As described in section 5,
+TALQ-defined functions and services already support many Smart City use cases but when an
+implementation requires a function which is not already specifically defined in TALQ, a TALQ-
+defined generic function (e.g. Generic Sensor, Binary Sensor, Generic Actuator) can be used if
+appropriate. This may require communication between the CMS vendor and the ODN vendor to
+ensure the generic data returned can be appropriately interpreted and displayed in the CMS.
+Alternatively, a vendor-specific function can be defined, although in general a CMS would not be
+aware of the behavior of vendor-specific functions. Again, communication between the vendors of
+any CMS and ODN which are expected to support the function may be required to establish a
+common understanding of the semantics of the function. Such a function should if possible use
+existing TALQ-defined Attributes and Events.
+TALQ members developing vendor-specific functions are invited to propose these functions with
+associated attributes and events to the TALQ Consortium, to be considered for inclusion in a future
+version of the TALQ Specification through the process defined on the TALQ Consortium official web
+site.
+
+4.2 TALQ functions
+
+A TALQ function is composed of configuration attributes, operational attributes, metering
+attributes and events (the events correspond to status attributes). The configuration, control,
+command and monitoring of that function can be achieved by sending a RESTful request (GET,
+PUT, POST, DELETE, PATCH) to manipulate these attributes and events, or by using other more
+complex TALQ resources (e.g. override, log reports, control programs, etc.).
+The complete and detailed descriptions of these TALQ functions, their attributes and events are
+described in detail in the OAS file. The list below is given here as a set of examples:
+
+                                                                                                                  24 of 66
+TALQ Specification  Version 2.6.3
+
+      Function                    Description                                Examples of attributes
+
+Basic               The Basic function describes the properties of    (refer to the TALQ web site to get the accurate
+                    the physical device, such as its identifier, its  and updated list of TALQ functions, Attributes
+Gateway             geographical position and more. This function
+Communication       also provides information on time reference                            and Events)
+Lamp actuator       such as device time zone and local time. The
+Lamp monitor        ntpServer and a ntpSynchPeriod attributes are         · assetId
+                    optional and may be used for time                     · displayName
+                    synchronization.                                      · longitude
+                    This function is mandatory in any physical            · latitude
+                    device for both sides, Gateway and CMS.               · serial
+                                                                          · timeZone
+                    The Gateway function includes the attributes          · ntpServer
+                    to enable the communication between a CMS             · ntpSyncPeriod
+                    and the Gateway according to the TALQ Smart           · currentTime
+                    City Protocol.                                        ·...
+                    In a given ODN there shall be one and only one        · installationDateTime
+                    instance of the Gateway function per
+                    supported CMS connection.                             · gatewayAddress
+                                                                          · gatewayUri
+                    The Communication function hosts attributes           · cmsURI
+                    related to the communication within the ODN,          · vendor
+                    i.e. between ODN devices and the Gateway.             ·...
+                    Although communication within the ODN is not          · retryPeriod
+                    in the scope of the TALQ Smart City Protocol,         · gatewayRetryPeriod
+                    this function may enable the CMS to configure         · cmsRetryPeriod
+                    some parameters in the ODN and/or to display          · gatewayNumberOfRetries
+                    network performance.                                  · cmsNumberOfRetries
+
+                    The Lamp Actuator function includes attributes        · communicationType
+                    related to switching and dimming one or more          · transmitPower
+                    lamps with one single actuator. The Lamp              · repeatingEnabled
+                    Actuator function refers to a Lamp Type, which        · numberOfHops
+                    is a lighting-specific resource that gathers          · signalStrength
+                    parameters that are typical to that lamp, such        ·...
+                    as the lamp wattage, the electric threshold for       · communicationFailure
+                    that lamp or the control mechanism to switch          · applicationType
+                    and dim this lamp (e.g. DALI, 1-10V, other).
+                    Refer to the JSON schema for a complete               · targetLightCommand
+                    description of the lamp type parameters.              · calendarID
+                    The Lamp Monitor function allows monitoring           · lampTypeID
+                    of lamp parameters such as electrical                 · feedbackLightCommand
+                    parameters, energy consumption, temperature           · actualLightState
+                    and more. The Lamp Monitor also refers to             · invalidCalendar
+                    Lamp Types to use some of the lamp type               · invalidControlProgram
+                    parameters such as lowCurrentThreshold,               · applicationType
+                    highCurrentThreshold, warmUpTime and to
+                    identify failures and events. Refer to the JSON       · supplyType
+                    schema for complete description of the lamp           · lampTypeID
+                    type parameters.                                      · operatingHours
+                                                                          · actuatorReference
+                                                                          · temperature
+                                                                          · supplyVoltage
+                                                                          · supplyCurrent
+                                                                          · activePower
+                                                                          · powerFactor
+                                                                          · activeEnergy
+                                                                          ·...
+                                                                          · lampFailure
+                                                                          · dimmingFailure
+                                                                          · supplyCurrentTooHigh
+
+                                                                      25 of 66
+TALQ Specification         Version 2.6.3
+
+Electrical meter           The electrical meter function supports            ·...
+                           measurement such as voltage, current, power,      · applicationType
+                           energy, and power factor. This function may be
+                           associated with cabinet controllers, electrical   · totalPower
+                           meters installed in switch boxes or any other     · totalVA
+                           device that measures energy. It can be used to    · supplyVoltage
+                           measure either single phase and three phase       · phase1Voltage
+                           circuits.                                         · phase2Voltage
+                                                                             · phase3Voltage
+Photocell                  The Photocell function models the capabilities    ·...
+Light sensor               of a photocell that detects ambient light level.  · totalPowerTooHigh
+                           Uses may include lighting control.                · applicationType
+                                                                             · actuatorReference
+                           The Light Sensor function provides the output     · And many others
+                           of a light sensor and allows Gateways to send
+                           events in case the value is above/below           · onLevel
+                           configurable thresholds.                          · offLevel
+                                                                             · photocellOutput
+Temperature sensor         The Temperature Sensor function allows a CMS      · applicationType
+                           to monitor the temperature and send events in
+                           case the value is above/below configurable        · levelLowThreshold
+                           thresholds.                                       · levelHighThreshold
+                                                                             · lightLevel
+Humidity sensor            The Humidity Sensor function allows a CMS to      · levelTooHigh
+Particulate Matter sensor  monitor the humidity and send events in case      · levelTooLow
+                           the value is above/below configurable             · applicationType
+                           thresholds.
+                                                                             · temperatureHighThreshold
+                           The Particulate Matter Sensor function allows a   · temperatureLowThreshold
+                           CMS to monitor PM10, PM2.5 and PM1 levels         · fireDetectionThreshold
+                           and send events in case the value is              · temperature
+                           above/below configurable thresholds.              · temperatureTooHigh
+                                                                             · temperatureTooLow
+Presence sensor            The Presence Sensor function allows a CMS to      · fireDetected
+Movement sensor            detect presence. This function may be used in     · applicationType
+                           Parking Place detectors as well as in dynamic     · minMeasuredTemperature
+                           outdoor lighting scenario.                        · maxMeasuredTemperature
+                                                                             · measuredTemperatureSince
+                           The Movement Sensor function allows a CMS
+                           to detect physical movement of a device. This     · humidityHighThreshold
+                           function may be used in Waste Container           · humidity
+                           sensor to detect that container has apparently    · humidityTooHigh
+                           been emptied or is not in the proper position,    · applicationType
+                           as well as in asset tracking applications.
+                                                                             · pm1HighThreshold
+                                                                             · pm2-5HighThreshold
+                                                                             · pm10HighThreshold
+                                                                             · pm1
+                                                                             · pm2-5
+                                                                             · pm10
+                                                                             · pm1TooHigh
+                                                                             · pm2-5TooHigh
+                                                                             · pm10TooHigh
+                                                                             · applicationType
+
+                                                                             · presenceStatus
+                                                                             · presenceStatusChanged
+                                                                             · applicationType
+
+                                                                             · movementThreshold
+                                                                             · movementDetected
+                                                                             · notInProperPosition
+                                                                             · applicationType
+
+                                                                                                                                   26 of 66
+TALQ Specification     Version 2.6.3
+
+Filling level sensor   DEPRECATED by 2.2.0: This function has been          · levelHighThreshold
+                       deprecated and it will be removed in the next        · containerHeight
+                       MAJOR release. Please use the new                    · containerVolume
+                       LocationSensorFunction instead.                      · fillingHeight
+                       The Filling Level Sensor function allows to          · fillingPercentage
+                       measure how full a container is and send an          · containerFull
+                       event in case the value is above configurable        · contentsType
+                       thresholds.                                          · contentsOtherType
+                                                                            · applicationType
+Battery level sensor   The Battery Level Sensor function allows to
+Generic actuator       measure the charge of the battery, monitor the       · batteryLevelLowThreshold
+                       battery, identify whether the associated device      · batteryLevel
+                       is using the battery and send events in case the     · batteryLevelTooLow
+                       value is below configurable thresholds.              · powerSource
+                       The Generic Actuator function enables to             · applicationType
+                       control an actuator, for instance in an electrical
+                       cabinet or an irrigation valve.                      · targetCommand
+                                                                            · feedbackCommand
+Generic sensor         A Generic Sensor function can be used to             · defaultState
+                       model any sensor that provides an analog             · actualState
+                       output and send events in case the value is          · applicationType
+                       above/below configurable thresholds.
+                                                                            · levelHighThreshold
+Binary sensor          A Binary Sensor function can be used to model        · levelLowThreshold
+Solar Battery Charger  any sensor that provides a binary output.            · level
+                                                                            · levelTooHigh
+                       A solar battery charger is used to charge a          · levelTooLow
+                       battery with solar energy. Typical use cases are     · applicationType
+                       energy demanding off-grid applications like
+                       solar lighting, solar vehicle charging (cars and     · level
+                       bikes), public transit information, traffic          · sensorOutputOn
+                       control, public security (CCTV) and many more.       · applicationType
+                       The aim of this function is to provide very
+                       general attributes that allow the CMS to             · inputVoltage
+                       configure and monitor such applications.             · inputCurrent
+                                                                            · outputVoltage
+Battery Management     A battery management system is used to               · outputCurrent
+System                 monitor the charging and discharging of a            · chargerTemperature
+                       battery and protect the battery. Typical use         · PVTemperature
+Traffic Counter        cases are (off-grid) applications like solar         · accumulatedEnergy
+                       lighting, solar vehicle charging (cars and bikes),   · startChargeInputVoltage
+                       public transit information, traffic control, public  · endChargeInputVoltage
+                       security (CCTV) and many more, where the             ·...
+                       battery is charged and discharged on a regular       · lowTemperature
+                       basis.                                               · highPower
+                                                                            · charging
+                       The Traffic Counter Function is used to provide      · applicationType
+                       statistics on the number of vehicles passing on
+                       the road. It allows to have the number of            · batteryChemistry
+                       pedestrians, bicycles, cars or trucks for a          · nominalVoltage
+                                                                            · nominalCapacity
+                                                                            ·...
+                                                                            · overCurrentCharge
+                                                                            · overCurrentDischarge
+                                                                            · highTemperatureThreshold
+                                                                            · highTemperature
+                                                                            · applicationType
+
+                                                                            · roadUserNumber
+                                                                            · accumulatedRoadUserNumber
+                                                                            · roadUser
+                                                                            · accumulatedSince
+
+                                                                                                                                  27 of 66
+TALQ Specification  Version 2.6.3
+
+                    certain period of time that is configurable by       · heavyTrafficDetected
+                    the CMS. It also allows to count the number of       · heavyTrafficDetectedThreshold
+                    vehicles using diesel or petrol.                     · trafficSamplingPeriod
+                                                                         · applicationType
+Location Sensor     The Location Sensor Function is used to              · expectedLocation
+Accelerometer       indicate that an object has changed position         · locationChangedThreshold
+                    attributes configurable by the CMS or based on       · location
+                    internal setup of the vendor. For example, a         · locationChanged
+                    specific location (latitude, longitude) of a         · uncertainty
+                    device could be defined by the vendor. If the        · compassDirection
+                    device is equipped with a GPS, it could send a       · velocity
+                    specific event indicating that its position is       · speed
+                    different to the one defined by the CMS. We          · applicationType
+                    might also want to let the configuration to the
+                    vendor itself and simply define events notifying     · impactDetectedAccelerationThreshold
+                    the CMS that the default configuration has           · accelerationSamplingPeriod
+                    changed. For example, a garbage bin could            · accelerationX
+                    have its location defined based on a sensor          · accelerationY
+                    placed on the floor. If the bin is not above this    · accelerationZ
+                    sensor, the vendor will trigger an event. In this    · acceleration
+                    last case, the CMS does not need to configure        · impactDetected
+                    anything.                                            · applicationType
+                                                                         · expectedOrientation
+                    The Accelerometer Function is used to indicate       · orientationChangedThreshold
+                    that an object has had an impact with another        · orientation
+                    object and to report its acceleration.               · orientationChanged
+                                                                         · applicationType
+Orientation         The Orientation function is used to indicate
+Fluid Level Sensor  that an object has changed orientation based         · fluidLevelTooLowThreshold
+Waste Container     on attributes configurable by the CMS or based       · distanceSensorBottom
+                    on internal setup of the vendor. The target          · fluidLevel
+                    orientation of the object could be configured        · fluidLevelTooHigh
+                    by the CMS or could be handled by the vendor.        · fluidLevelTooLow
+                    In the latter case, the configuration is let to the  · applicationType
+                    vendor itself and events are triggered               · lastCollectionDate
+                    depending on internal configuration.                 · collectionLateThreshold
+                                                                         · collectionLate
+                    The Fluid Level Sensor function allows to            · containerTampered
+                    collect data and events about fluid levels. It       · contentsTampered
+                    could be used to measure fluid levels in             · wasteType
+                    channels, lakes, containers, etc.                    · contentsOtherType
+                                                                         · applicationType
+                    The Waste Container function allows to log           · pH
+                    when the container is collected and send             · pHHighLevelThreshold
+                    events in case the date is above a configurable      · pHLowLevelThreshold
+                    threshold. Additionally it sends events when         · pHTooHigh
+                    the contents or container are tampered.              · pHTooLow
+                                                                         · applicationType
+pH Sensor           The pH Sensor allows to measure the pH and
+                    sends events if the value is above/below the
+                    configured thresholds.
+
+                                                                         28 of 66
+TALQ Specification  Version 2.6.3
+
+Weight Sensor       The Weight Sensor allows to measure the               · weight
+                    weight and sends an event if the value is             · weightHighThreshold
+                    above/below the thresholds                            · weightTooHigh
+                                                                          · weightLowThreshold
+Gas Sensor          The Gas Sensor function allows to measure the         · weightTooLow
+                    gas concentration and sends events if the level       · applicationType
+                    is above the configured thresholds.
+                                                                          · gasConcentration
+Simple Actuator     The Simple Actuator function includes                 · gasHighConcentrationThreshold
+Time                attributes related to generic control and it          · gasConcentrationTooHigh
+Segment Monitor     represents the smallest unit for control              · gasName
+                    purposes. This function allows the new profiles       · gasOtherName
+                    to use actuators without the complexity of            · applicationType
+                    calendars
+                                                                          · targetCommand
+                    The Time function provides information on             · feedbackCommand
+                    time reference in the device time zone, and           · defaultState
+                    local time. This function is mandatory for both       · actualState
+                    Gateway and CMS sides, although the x-talq-           · applicationType
+                    profiles definition will continue stating that it is
+                    optional until the release 3.0.0 to keep              · timeZone
+                    backwards compatibility. This will be modified        · ntpServers
+                    at 3.0.0.                                             · ntpSynchPeriod
+                                                                          · currentTme
+                    The Segment Monitor function enables                  · lastTimeSync
+                    monitoring of segment parameters. Multiple            · lastSyncError
+                    segment monitor functions may be
+                    implemented by a single device.                       · numberOfLoads
+                                                                          · switchingErrorOn
+Noise Monitoring Sensor This sensor function enables monitoring basic     · switchingErrorOff
+                                   noise data.                            · circuitBreakerTripped
+                                                                          · localOverride
+Atmospheric Sensor  This sensor function enables monitoring basic         · applicationType
+Wind Sensor         atmospheric data such as barometric pressure,         · segmentReference
+                    humidity, and temperature. This function              · actuatorReference
+                    complies with WMO standards as reported in
+                    the 'Guide to Instruments and Methods of              · noise
+                    Observation (WMO-No. 8) / Volume I -                  · noiseHighThreshold
+                    Measurement of Meteorological Variables'              · noiseTooHigh
+                                                                          · applicationType
+                    This sensor function enables monitoring wind          · minMeasuredNoise
+                    speed and direction. This function complies           · maxMeasuredNoise
+                    with WMO standards as reported in the 'Guide          · measuredNoiseSince
+                    to Instruments and Methods of Observation             · abnormalNoiseDetected
+                    (WMO-No. 8) / Volume I - Measurement of               · typeOfNoise
+                    Meteorological Variables'
+                                                                          · airTemperature
+                                                                          · feelsLikeTemperature
+                                                                          · relativeHumidity
+                                                                          · dewPoint
+                                                                          · atmosphericPressure
+                                                                          · applicationType
+
+                                                                          · windSpeed
+                                                                          · windDirectionString
+                                                                          · windDirection
+                                                                          · windGust
+                                                                          · windGustDirection
+                                                                          · maxWindGust
+                                                                          · maxWindGustSince
+                                                                          · applicationType
+
+                                                                                                           29 of 66
+TALQ Specification     Version 2.6.3
+
+Precipitation Sensor   This sensor function enables monitoring              · precipitationRate
+                       precipitation, defined as the liquid or solid        · accumulatedPrecipitation
+                       products of the condensation of water vapour         · accumulatedPrecipitationSince
+                       falling from clouds, in the form of rain, drizzle,   · applicationType
+                       snow, snow grains, snow pellets, hail and ice
+                       pellets; or falling from clear air in the form of    · cloudiness
+                       diamond dust. This function complies with            · solarDirectRadiation
+                       WMO standards as reported in the 'Guide to           · visibility
+                       Instruments and Methods of Observation               · applicationType
+                       (WMO-No. 8) / Volume I - Measurement of
+                       Meteorological Variables'                            · overfull
+                                                                            · levelWarning
+Sky Sensor             This sensor function enables monitoring of           · grillOpened
+                       other atmospheric phenomena. This function           · siltLevel
+                       complies with WMO standards as reported in           · applicationType
+                       the 'Guide to Instruments and Methods of             · flowRate
+                       Observation (WMO-No. 8) / Volume I -                 · flowRateTooHighThreshold
+                       Measurement of Meteorological Variables'             · flowRateTooLowThreshold
+                                                                            · flowRateTooHigh
+Gully Sensor           The Gully Sensor measures properties                 · flowRateTooLow
+                       associated with street drains or gullies.            · maxFlowRate
+                                                                            · minFlowRate
+Water Flow Sensor      The water flow sensor function measures the          · flowRateSince
+                       water flow rate.                                     · applicationType
+                                                                            · pH
+Water Quality Sensor   The water quality sensor function measures the       · chlorine
+                       quality of the water in the drinkable water          · orp
+                       distribution network, in water tanks or in lakes     · totalDissolvedGas
+                       and rivers.                                          · dissolvedOxygen
+                                                                            · ....
+Text Display Actuator  The Text Display Actuator is used to send text       · NH4TooHigh
+                       to a text-only or text mode graphics display         · NH4TooHighThreshold
+                       within a PositionedTextState (text, xPos, yPos).     · applicationType
+                       Writing a string of text to the text resource        · defaultState
+                       causes it to be displayed at the selected X and Y    · actualState
+                       locations on the display. If X or Y are set to a     · targetCommand
+                       value greater than the size of the display, the      · feedbackCommand
+                       position "wraps around" to the modulus of the        · stateChange
+                       setting and the display size. Likewise, if the text  · calendarID
+                       string overflows the display size, the text          · invalidCalendar
+                       "wraps around" and displays on the next line         · invalidProgram
+                       down or, if the last line has been written,          · programChange
+                       wraps around to the top of the display.              · calendarChange
+                       Brightness and Contrast controls are provided        · targetCommandChange
+                       to allow control of various display types            · applicationType
+                       including STN and DSTN type LCD character            · maxXCoordinate
+                       displays. Setting the clearDisplay to true causes    · maxYCoordinate
+                       the display to be erased.                            · level
+                                                                            · contrast
+                                                                            · clearDisplay
+
+                                                                                                             30 of 66
+TALQ Specification     Version 2.6.3
+
+Parking Sensor         The parking sensor provides actual and             · occupancy
+                       accumulated occupancy duration as well as          · duration
+                       forbidden parking detection.                       · accumulatedDuration
+                                                                          · accumulatedSince
+Parking Camera Sensor  The Parking Camera Sensor provides                 · forbiddenParkingDetected
+                       information about the parking slots that only      · applicationType
+                       computer vision can provide.                       · sensorType
+                                                                          · occupancyChangeToVacant
+Luminaire Asset        This entity contains the managed and tracked       · occupancyChangeToOccupied
+                       attributes of a specific Luminaire, excluding the  · overstayDetected
+                       concept of Controller and Driver.                  · maxDuration
+
+Driver Asset           This entity contains the managed and tracked       · totalSlots
+                       attributes of a specific driver                    · slotsData
+                                                                          · freeSlots
+Controller Asset       This entity contains the managed and tracked       · freeSlotIDs
+                       attributes of a specific controller                · averageDuration
+                                                                          · accumulatedParkingSessions
+                                                                          · accumulatedSince
+                                                                          · forbiddenVehicleDetected
+                                                                          · blockingVehicleDetected
+                                                                          · badParkingDetected
+                                                                          · applicationType
+                                                                          · zoneReference
+
+                                                                          · luminaireTypeAddress
+                                                                          · bracketTypeAddress
+                                                                          · serial
+                                                                          · projectID
+                                                                          · luminousFluxConfiguration
+                                                                          · paintingColor
+                                                                          · virtualPowerOutput
+                                                                          · installationTimestamp
+                                                                          · identification
+                                                                          · identificationNumber
+                                                                          · mountingOption
+                                                                          · warrantyExpirationDate
+                                                                          · manufactureYear
+                                                                          · manufactureWeek
+                                                                          · warrantyYears
+                                                                          · applicationType
+
+                                                                          · driverTypeAddress
+                                                                          · serial
+                                                                          · projectID
+                                                                          · firmwareVersion
+                                                                          · installationTimestamp
+                                                                          · manufactureYear
+                                                                          · manufactureWeek
+                                                                          · warrantyExpirationDate
+                                                                          · warrantyYears
+                                                                          · applicationType
+
+                                                                          · controllerTypeAddress
+                                                                          · serial
+                                                                          · firmwareVersion
+                                                                          · installationTimestamp
+                                                                          · registrationTimestamp
+                                                                          · projectID
+                                                                          · controllerColor
+                                                                          · connectionType
+                                                                          · warrantyExpirationDate
+                                                                          · warrantyYears
+                                                                          · manufactureYear
+
+                                                                                                                                31 of 66
+TALQ Specification                    Version 2.6.3
+
+Cabinet Configuration  The function defines attributes and              · manufactureWeek
+Cabinet Monitor        functionality needed to control light from a     · applicationType
+                       street light cabinet regarding the segment       · actuatingType
+                       monitors.                                        · segmentsConfiguration
+                                                                        · applicationType
+                       This entity defines attributes for monitoring a
+                       street light cabinet.                            · cabinetDoorOpen
+                                                                        · leakageDetected
+                                                                        · applicationType
+
+TALQ functions and device classes provide full flexibility to the vendor to model its devices. For
+example, an environmental sensor could be modelled by its vendor as follows:
+
+TALQ Function #1: Basic          Environmental Sensor
+
+Configuration Attributes Operational Attributes  Metering Attributes    Events/Status Attributes
+                                                 N/A                    N/A
+assetId, longitude,         N/A
+                                                                        Events/Status Attributes
+latitude, timeZone, serial                                              communicationFailure
+                                                                        wirelessLowSignalStrength
+TALQ Function #2: Communication
+
+Configuration Attributes Operational Attributes  Metering Attributes
+                                                 transmitPower,
+macAddress,                 N/A                  signalStrength
+
+communication type
+
+TALQ Function #3: Particulate Matter
+
+Configuration Attributes Operational Attributes  Metering Attributes    Events/Status Attributes
+                                                 PM10, PM2-5            PM10TooHigh
+highPM10Threshold           N/A                                         PM2-5TooHigh
+
+highPM2-5Threshold                                                      Events/Status Attributes
+                                                                        temperatureTooHigh
+TALQ Function #4: Temperature                                           fireDetected
+
+Configuration Attributes Operational Attributes  Metering Attributes
+temperatureHighThreshold N/A                     Temperature
+
+                                                                                                   32 of 66
+TALQ Specification                      Version 2.6.3
+
+The example below shows how a waste container sensor could be modelled with TALQ:
+
+TALQ Function #1: Basic                 Waste Container
+
+      Configuration Attributes                  Sensor       Metering Attributes   Events/Status Attributes
+      assetId, longitude, latitude,                          N/A                   N/A
+      timeZone                       Operational Attributes
+                                     N/A                                          Events/Status Attributes
+                                                                                  communicationFailure
+TALQ Function #2: Communication
+                                                                                  Events/Status Attributes
+Configuration Attributes             Operational Attributes  Metering Attributes  containerFull
+macAddress                           N/A                     transmitPower,
+                                                             signalStrength       Events/Status Attributes
+                                                                                  batteryLevelTooLow
+TALQ Function #3: Filling Level Sensor
+
+Configuration Attributes             Operational Attributes  Metering Attributes
+containerHeight                      N/A                     fillingHeight
+
+TALQ Function #4: Battery Level Sensor
+
+Configuration Attributes             Operational Attributes  Metering Attributes
+batteryLevelLowThreshold             N/A                     batteryLevel
+
+                                                                                                             33 of 66
+TALQ Specification                     Version 2.6.3
+
+A Light Point Controller equipped with a motion detector to provide Dynamic Outdoor Lighting
+could be modelled by its vendor following the example below:
+
+TALQ Function #1: Basic                Light Point
+
+Configuration Attributes Operational Attributes   Metering Attributes     Events/Status Attributes
+                                                  N/A                     N/A
+assetId, longitude,       currentTime
+                                                                          Events/Status Attributes
+latitude, timeZone                                                        communicationFailure
+                                                                          wirelessLowSignalStrength
+TALQ Function #2: Communication
+
+Configuration Attributes Operational Attributes   Metering Attributes
+                                                  transmitPower,
+macAddress,               N/A                     signalStrength
+
+communication type
+
+TALQ Function #3: Lamp Actuator #1
+
+Configuration Attributes Operational Attributes   Metering Attributes     Events/Status Attributes
+                                                  actualLightState,       invalidCalendar,
+lampType, calendarID      targetLightCommand      feedbackLightCommand    invalidControlProgram
+
+TALQ Function #4: Lamp Actuator #2                Metering Attributes     Events/Status Attributes
+                                                  actualLightState,       invalidCalendar,
+Configuration Attributes Operational Attributes   feedbackLightCommand    invalidControlProgram
+
+lampType, calendarID      targetLightCommand      Metering Attributes     Events/Status Attributes
+                                                  operatingHours, power   lampFailure, supplyVoltage
+TALQ Function #5: Lamp Monitor                    Factor, supplyVoltage,  TooHigh, activePowerToo
+                                                  supplyCurrent, active   Low, invalidControlProgram
+Configuration Attributes  Operational Attributes  Power, activeEnergy
+supplyType,               N/A                                             Events/Status Attributes
+lampType,                                         Metering Attributes     sensorOutputOn
+highSupplyVoltage                                 N/A
+Threshold
+
+TALQ Function #6: Binary Sensor
+
+Configuration Attributes Operational Attributes
+
+level                     N/A
+
+The above examples show the flexibility of the TALQ data model that allows vendor to have very
+different and creative devices, while allowing the CMS to understand the device capabilities and
+behavior and to configure, control, command and/or monitor it without the need to implement
+vendor specific features. The TALQ specification allow vendors to easily turn such a model into a
+device class that is announced by the Gateway to the CMS as part of the bootstrap process
+described in this document.
+
+                                                                                                      34 of 66
+TALQ Specification  Version 2.6.3
+
+4.3 TALQ services
+
+Each TALQ service defines the message exchanges and application behavior needed to manipulate
+function attributes to implement a certain set of features. Some services introduce other resources
+required to manipulate these function attributes. The following services are supported in TALQ.
+
+Configuration service
+
+The configuration service enables the Gateway to announce device and service capabilities (i.e. a
+list of supported services and of supported device classes including functions and attributes) and to
+announce devices to the CMS. It also enables the CMS to create devices in the Gateway and to
+configure their configuration attributes.
+TALQ covers a variety of smart city uses cases, including street lighting. Some TALQ
+implementations may implement all possible TALQ functionality, but many will focus on a subset
+of applications.
+Some TALQ functionality is mandatory across all applications. Some functionality is mandatory for
+certain applications but optional for others. Some functionality is simply optional across all
+applications.
+To address this range of requirements, the use of "Profiles" in TALQ has been introduced. The
+existing indication of mandatory or optional for TALQ features has been adopted as a "Lighting
+Profile", and further profiles are defined for other applications. The mapping for each feature and
+each profile is contained in the data model OAS file.
+The Gateway announces during the bootstrap process which profiles are supported. This
+information is important for the CMS to expect mandatory features based on the profiles
+announced.
+The current version of TALQ provides the profiles below:
+
+    · Lighting
+    · Waste Management
+    · Environmental Monitoring
+    · Smart Traffic
+    · Smart Parking
+    · Lighting Asset Management
+    · Cabinet Control
+
+The configuration service shall be supported by both CMS and Gateway in order to enable the other
+TALQ services necessary to operate and manage the system, such as on-demand read, control,
+group management and data collection.
+
+On-demand read service
+
+The on-demand read service enables the CMS to read any metering attribute from any function of
+any device. (This service is supported by a standard RESTful GET API on the
+device/function/attribute resource.)
+The on-demand read service shall be supported by the Gateway.
+
+Control service
+
+The control service describes the mechanisms to operate commands in order to enable both
+schedule-based control and override control. The override control mode enables the CMS to
+actuate any command over a device or groups of devices as needed, e.g. open/close a valve to
+
+                                   35 of 66
+TALQ Specification  Version 2.6.3
+
+start/stop water irrigation, switch a lamp in real time, send a message to an information panel
+(note that such a basic actuator command can also be implemented with a simple PUT or PATCH to
+the related attribute). The schedule-based control enables the CMS to pre-configure the behavior
+of one command over one or more devices based on one or more factors, such as time and sensor
+inputs, e.g. open/close water irrigation valve when humidity is below a threshold, increase light
+level when a pedestrian is detected, switch ON a light at sunset.
+The concepts of calendar and control program are introduced in the control service to achieve
+interoperability on the configuration and execution of schedule-based control.
+The control service shall be supported by both CMS and Gateway.
+
+Group management service
+
+The group management service provides the mechanisms to define and manage groups. Groups
+can be used across TALQ services whenever there is a need to address a set of devices and/or
+functions together. For instance, an override control command may be sent to a group of
+devices, or the same control program may be distributed to a group of lamp actuators. A group
+may also include other groups as members. Groups can also be used in the configuration of the
+data collection features.
+It should be noted that groups are used for communication and addressing purposes only. For
+instance, assigning a calendar to a group associates the calendar with that group at the moment
+of assignment. Later changes to the group do not assign the calendar to the new members nor do
+they remove the calendar from members removed from the group. Likewise, if a logger
+configuration includes a group to be recorded, and the group is modified after the configuration
+is sent, the ODN will record the devices contained in the first version of the group until a new
+version of the logger configuration is received. The CMS shall manage such configuration changes
+independently.
+The group management service shall be supported by the CMS but is optional for the ODN.
+
+Data collection service
+
+The data collection service enables the CMS to configure how an ODN reports metering attribute
+values, status information and events, and when or under what conditions the logged data is
+transferred to the CMS. This service enables adaptation of the data collection and transporting
+behavior to the needs of the specific CMS and ODN implementations. It also enables aggregated
+information to be reported to the CMS, which can result in more efficient use of bandwidth
+between CMS and Gateways. The data collection service covers scheduled data logging aspects by
+specifying a format to configure the recording and reporting of data and events.
+The data collection service shall be supported by the Gateway.
+
+Data package transfer service
+
+The data package transfer service provides a mechanism to transfer data packages containing ODN
+vendor specific information, such as firmware updates, from the CMS to the Gateway. The CMS
+uses this service to forward data transparently to the Gateway. The content and format of the data
+transferred is outside the scope of the TALQ specification. It may include vendor specific
+information. One application of the data package transfer service is for the CMS to send
+firmware/software updates for end-devices or other vendor specific information.
+The data package transfer service is optional for both CMS and Gateway.
+
+                                   36 of 66
+TALQ Specification    Version 2.6.3
+
+4.4 TALQ resources
+
+TALQ Addresses
+
+TALQ addresses are used to identify devices, groups and other resources, and shall be unique
+within an ODN. TALQ addresses of Devices shall be as specified in RFC 4122 `Universally Unique
+IDentifier (UUID) URN Namespace' (https://tools.ietf.org/html/rfc4122), and this format is also
+recommended for other TALQ addresses.
+
+Resources
+
+The URI associated with each RESTful API contains the type of resource involved in the RESTful
+API:
+
+Type of resource      Description
+
+devices               The devices composed of functions, themselves composed of
+groups                attributes and events.
+                      The groups of devices.
+
+device-classes        The description of the functions and attributes defined by the
+control-programs      vendor to describe its physical devices.
+calendars             The set of rules to schedule the operations on a device
+                      automatically.
+                      The set of calendar rules where control program applies.
+
+logger-configs        The configuration parameters of a data logger
+
+log-reports           A resource that is used by a Gateway to group multiple log
+data-packages         values from many devices when sending them to the CMS
+                      A data package that is sent by the CMS to a Gateway, for
+                      example to update the firmware of a Gateway or of a set of
+                      devices.
+
+Application-specific  Description
+resources
+
+lamp-types            The set of parameters to describe lamp types for outdoor
+luminaire-types       lighting network solutions.
+driver-types          The set of parameters to describe luminaire types for outdoor
+bracket-types         lighting network solutions.
+controller-types      The set of parameters to describe driver types for outdoor
+                      lighting network solutions.
+                      The set of parameters to describe bracket types for outdoor
+                      lighting network solutions.
+                      The set of parameters to describe controller types for outdoor
+                      lighting network solutions.
+
+A CMS shall not refer to a resource created by the CMS and expose this reference to a Gateway
+before the referred resource is at least sent once to the same Gateway.
+A Gateway shall not refer to a resource created by the same Gateway and expose this reference
+to the CMS before the referred resource is at least sent once to the CMS.
+
+                                                                                                                                                                              37 of 66
+TALQ Specification  Version 2.6.3
+
+Whenever the Gateway or the CMS encounters an invalid resource address, a TALQ
+invalidAddress event shall be generated using the log-report resource. Those resources created
+by a specific CMS (with the exception of devices and functions) are visible only to that CMS.
+Vendor-specific attributes may be added in any TALQ entity. CMS and Gateway shall not raise an
+error if such an attribute is listed in a resource related request. Vendors having vendor-specific
+attributes should communicate with other parties to describe the format and explain how to use
+their vendor-specific resources.
+A CMS shall not delete an entity referred by any other entity, and in such a case the request will
+be rejected by the Gateway.
+A Gateway shall not delete an entity referred by any other entity, and in such a case the request
+will be rejected by the CMS.
+The CMS should be recognized as the main element to coordinate the successful delivery of
+messages to end devices, although gateways would be allowed to offer this functionality, too.
+
+4.5 TALQ Types
+
+A TALQ Type set those attributes that together characterize a given type of function instances, i.e:
+those fields whose values are common to all instances of the same type. It started with LampType,
+where the goal was to group those attributes that characterized a given lamp and control gear
+combination, thus, avoiding creating the same attribute values for all the same functions of the
+same type.
+
+The complete and detailed descriptions of these TALQ types and their attributes are described in
+detail in the OAS file. The list below is given here as a set of examples:
+
+Type                Description                                              Examples of attributes
+
+                                                                      (refer to the TALQ web site to get the accurate
+                                                                      and updated list of TALQ types and attributes)
+
+Lamp                The lamp type consists of a set of attributes     · name
+Luminaire           that together characterize a given lamp and       · address
+                    control gear combination. The address of a        · wattage
+                    lamp type is included in the lamp actuator and    · controlType
+                    lamp monitor functions.                           · controlVoltMax
+                                                                      · controlVoltMin
+                    DEPRECATED by 2.5.0: This type has been           · ...
+                    deprecated and it will be removed in the next     · powerFactorThreshold
+                    MAJOR release. Please use the new                 · lumenDepreciationCurve
+                    LuminaireType, BracketType, DriverType and        · cloType
+                    ControllerType instead.                           · powerFactorThresholdDimmingCurve
+
+                    The LuminaireType consists of a set of            · ...
+                    attributes that together characterize, i.e.: are  · lightSourceType
+                    generic for, a given luminaire, excluding the     · lightDistributionType
+                    concept of Controller, Driver and Bracket.        · lcsRating
+                    The address of a luminaire type is included in    · lightPhotometry
+                    the luminaire asset function.                     · driverReplaceable
+                                                                      · ...
+                                                                      · commonModeOverVoltageProtection
+                                                                      · diferentialModeOverVoltageProtection
+                                                                      · electricalIsolationClass
+                                                                      · lor
+                                                                      · cct
+                                                                      · cri
+                                                                      · backlightCutType
+
+                                                                      38 of 66
+TALQ Specification  Version 2.6.3
+
+Bracket             The BracketType consists of a set of attributes    · ...
+                    that together characterize, i.e: are generic for,  · mountingOptions
+                    a given Bracket.                                   · mountMinDiameter
+                    The address of a bracket type is included in the   · mountMaxDiameter
+                    luminaire asset function.                          · tiltMinimum
+                                                                       · tiltMaximum
+Driver              The DriverType consists of a set of attributes     · weight
+                    that together characterize, i.e. are generic for,  · aerodynamicResistance
+                    a given Driver.
+                    The address of a driver type is included in the    ·...
+                    luminaire asset function.                          · controlElectricalInterfaceTypes
+                                                                       · controlInterfaceProtocolTypes
+Controller          The ControllerType consists of a set of            · programInterfaceType
+                    attributes that together characterize, i.e. are    · nominalAcMainsVoltage
+                    generic for, a given Controller.                   · maxAcMainsVoltage
+                    The address of a controller type is included in    · minAcMainsVoltage
+                    the luminaire asset function.                      · ...
+                                                                       · driverNominalCurrent
+                                                                       · driverNominalVoltage
+                                                                       · ratedLifeTime
+                                                                       · warrantyYears
+
+                                                                       · address
+                                                                       · name
+                                                                       · gtin
+                                                                       · powerConsumption
+                                                                       · locationPrecision
+                                                                       · manufacturerName
+                                                                       · productFamily
+                                                                       · model
+                                                                       · warrantyYears
+                                                                       · mechanicalInterfaces
+                                                                       · electricalInterfaces
+                                                                       · protocols
+
+                                                                                                          39 of 66
+TALQ Specification  Version 2.6.3
+
+5 TALQ USE CASES
+
+5.1 TALQ bootstrap process
+
+The bootstrap process is the process to establish the communication between a CMS and a
+Gateway using the TALQ Smart City Protocol. During the bootstrap process, the Gateway shall not
+send any information other than the information specified in this section and in the associated OAS
+files. The CMS shall reject any other request sent by the Gateway by answering with HTTP error
+code 403. The bootstrap process is composed of the following operations:
+
+    · Security check pre-requisite: The Gateway shall have been provisioned with the CMS's Uri
+         ("cmsUri") and proper security keys (refer to Section 3.6 for security matters). The method
+         through which the Gateway acquires the cmsUri is not part of the TALQ specification.
+
+    · Step 1 - Gateway announcement: The goal is for the Gateway to announce itself and its
+         capabilities to the CMS and, in return, to receive a unique TALQ address that will be used in
+         the data exchange.
+
+    · Step 2 - Services announcement: The Gateway sends the list of TALQ services, and their
+         options, that it can support so that the CMS can align the way it will configure, control,
+         command and monitor the Gateway's ODN.
+
+    · Step 3 ­ Device class announcement: The Gateway sends the list of device classes, still not
+         announced, that it can support, together with their functions and attributes descriptions
+         and constraints, so that the CMS align the way it will handle the devices on the Gateway's
+         ODN.
+
+If, prior to the current bootstrap, one or more other CMS were already attached then the Gateway
+shall signal an event(s) to pre-connected CMS indicating the attachment of another. Support for
+more than one CMS is optional.
+
+Step 1: Gateway announcement
+
+After a secure connection has been established, the Gateway shall send the following three REST
+requests to the CMS:
+
+    1. A POST request to /devices with a JSON Payload that provides the gatewayUri in its
+         Gateway function. Although no device class has been announced yet, it is implicitly
+         understood that this GatewayFunction is mandatory and thus is expected at the device
+         representing the Gateway; and other functions can be included at this first step. When
+         receiving such a request, the CMS shall create a unique gatewayAddress and send it,
+         together with its cmsAddress, in the JSON payload of its response. Both addresses must be
+         not NIL UUID. If the Gateway includes a non-NIL UUID gatewayAddress (or a non-NIL UUID
+         clientAddress) in the request, the CMS shall reject the request.
+
+    2. A POST request to /device-classes?clientAddress=<gatewayAddress> to send the
+         capabilities and the list of attributes that the Gateway device supports.
+
+    3. A PATCH request to /devices/<gatewayAddress>?clientAddress=<gatewayAddress> to send
+         the value of each attribute of the device implementing the Gateway function. This request
+         shall include the gatewayUri attribute inside the Gateway function so that the CMS knows
+         where to send requests.
+
+The final action of this step 1 is for the CMS to send a PATCH request to
+/devices/<gatewayAddress>?clientAddress=<cmsAddress> to set or update any configuration
+
+                                   40 of 66
+TALQ Specification  Version 2.6.3
+
+attribute in the device implementing the Gateway function. This shall include the TALQ address of
+the CMS.
+
+                                   41 of 66
+TALQ Specification  Version 2.6.3
+
+Step 2: Services announcement
+
+The Gateway shall then announce the list of TALQ services, and their options, that it can support,
+using a POST request to /services. The CMS shall respond with HTTP CREATED once the message
+is successfully processed. Here is an example of a request to send the list of TALQ services
+supported by the Gateway:
+
+CMS                                               Gateway
+
+                    HTTPs REST POST on /services
+                     HTTPs Response Code 201
+
+                                                JSON Response
+
+  Request URL: https://<cmsUri>/services?clientAddress=110a8321-e34c-112p5-b567-
+  566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+  Request Method: POST
+  Status Code: "201 OK"
+  Request Header: {
+
+     "talq-api-version": "2.6.3",
+  }
+  Request Content: [
+
+     {
+         "name": "ControlService",
+         "maximumCalendars": 100,
+         "maximumPrograms": 300,
+         "maxProgramsPerCalendar": 30,
+         "maxSwitchPointsPerProgram": 10,
+         "dayOffset": 0,
+         ...
+
+     },
+     {
+
+         "name": "groupManagementService",
+         "maximumNumberOfGroups": 20,
+         "maximumGroupSize": 40
+     },
+     ...
+  ]
+
+Step 3: Device class announcement
+
+The Gateway shall then announce the list of device classes, still not announced, and associated
+
+functions and attributes it can support with its description and constraints, using a POST request
+
+to /device-classes. The CMS shall respond with HTTP CREATED once the message is successfully
+
+processed. If the Gateway has no device class to announce to the CMS, it shall send an empty list
+
+of device classes inside the POST request so that the CMS can understand the bootstrap process
+
+has finished. Here is an example of a request to send the list of device classes supporting by the
+
+Gateway:
+
+                                                  42 of 66
+TALQ Specification  Version 2.6.3
+
+CMS                                                     Gateway
+
+                    HTTPs REST POST on /device-classes
+                         HTTPs Response Code 201
+
+                                                        JSON Response
+
+  Request URL: https://<cmsUri>/device-classes?clientAddress=110a8321-e34c-112p5-b567-
+  566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+  Request Method: POST
+  Status Code: "201 OK"
+  Request Header: {
+
+     "talq-api-version": "2.6.3",
+  }
+  Request Content: [
+
+     {
+         "name": "<deviceClassName>"
+         "functions": [
+             {
+                  "name": "BasicFunction",
+                  "attributes":[
+                      {
+                         "name": "displayName"
+                      },
+                      {
+                         "name": "assetId"
+                      },
+                      ...
+                  ]
+             },
+             {
+                  "name": "LampActuatorFunction",
+                  "attributes":[
+                      {
+                         "name": "lampTypeId"
+                      },
+                      {
+                         "name": "maintenanceFactor",
+                         "minValue": 0
+                         "maxValue": 100
+                      },
+                      {
+                         "name": "maintenancePeriod",
+                         "unit": "Hours"
+                      },
+                      ...
+                  ]
+             }
+         ]
+
+     },
+     ...
+  ]
+
+The Gateway may add functions and attributes to a device class after its announcement, but it shall
+never reduce the scope of a device class (e.g. remove an attribute) after announced. If the Gateway
+needs to reduce the scope of a device class, it shall announce it as a new device class to the CMS. If
+a device changes its device class for whatever reason, the API allows this change to be sent to the
+CMS with a PATCH/PUT request.
+
+                                                                                                                                                                              43 of 66
+TALQ Specification  Version 2.6.3
+
+Resynchronizing a Gateway
+
+If the CMS needs the Gateway to resynchronize its address and all its data (e.g. remove all the
+device classes):
+
+   1. The CMS should send a DELETE request to
+         https://<gatewayUri>/devices/<gatewayAddress>?clientAddress=<cmsAddress>
+
+   2. The Gateway shall remove all the data related to the CMS and send HTTP OK.
+   3. The Gateway shall then restart the bootstrap process as described above.
+
+If the Gateway needs to resynchronize or to reset:
+
+    1. The Gateway shall send a DELETE request to
+        https://<cmsUri>/devices/<gatewayAddress>?clientAddress=<gatewayAddress>
+
+    2. The CMS shall send a HTTP OK as a response after removing all the data attached to this
+         Gateway.
+
+    3. The Gateway shall remove all CMS data related to this CMS.
+    4. The Gateway shall restart a bootstrap process.
+
+As an example, see below the message exchanges between a Gateway and a CMS during the
+bootstrap process:
+
+CMS                                                                           Gateway
+
+     The cmsUri is provisioned at the Gateway before starting the bootstrap.
+           Gateway announcement: device and device class for Gateway
+
+                                      HTTPs REST POST on /devices
+             HTTPs Response Code 201 (includes the generated gatewayAddress)
+
+                      HTTPs REST POST on /devices-classes
+                             HTTPs Response Code 201
+
+                           HTTPs REST PATCH on /devices
+                            HTTPs Response Code 200
+
+     At next step, the CMS ensures that the cmsAddress is set
+
+                          HTTPs REST PATCH on /devices
+                              HTTPs Response Code 200
+
+                         Services announcement
+
+                          HTTPs REST POST on /services
+                             HTTPs Response Code 201
+
+                                                                                       44 of 66
+TALQ Specification  Version 2.6.3
+
+                       Device classes announcement
+
+                          HTTPs REST POST on /devices-classes
+                                HTTPs Response Code 201
+
+The bootstrap is finished. Next step should be device announcement.
+
+                                                                     45 of 66
+TALQ Specification  Version 2.6.3
+
+5.2 Announcing devices
+
+Once the bootstrap process is finished, the Gateway may, at any time, send a part or the
+complete description of each device to be controlled by the CMS. The Gateway is responsible for
+assigning a unique TALQ address to each of its devices and of sending all configuration attributes
+defined for each of them. The CMS shall respond with HTTP CREATED once any such message is
+successfully received.
+
+CMS                                                                            Gateway
+
+                    HTTPs REST POST on /devices
+                     HTTPs Response Code 201
+
+                                             JSON Response
+
+Request URL: https://<cmsUri>/devices?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-version": "2.6.3"
+}
+Request Content: [
+
+ {
+       "address": "110a8321-e34c-112p5-b567-566655748356",
+       "name": "<deviceName>",
+       "class": "<deviceClassName>",
+       "functions": [
+           {
+                "id": "basic001",
+                "type": "BasicFunction",
+                "displayName": {
+                    "value": "<displayName>"
+                },
+                "assetId": {
+                    "value": "<assetId>"
+                },
+                ...
+           },
+           {
+                "id": "lampActuator001",
+                "type": "LampActuatorFunction",
+                "lampTypeId": {
+                    "value": "<lampTypeId>"
+                },
+                "maintenanceFactor": {
+                    "value": 50
+                },
+                "maintenancePeriod": {
+                    "value": 12
+                },
+                ...
+           },
+           ...
+       ]
+
+   },
+   ...
+]
+
+                                                                                        46 of 66
+TALQ Specification  Version 2.6.3
+
+After receiving and processing a list of devices from the Gateway, the CMS may, at any time, send a
+PUT (or PATCH) request to change any of the configuration attributes of a device (except if such a
+configuration attribute is set as read-only), send a real time control command using a PUT (or
+PATCH) request on an operational attribute (except if such an operational attribute is set as read-
+only) or send an on-demand data read using a GET request on a metering attribute.
+
+A Gateway (or CMS) shall not send a device not compliant with its related device class, and in such
+a case the request will be rejected by the CMS (or Gateway).
+
+5.3 Creating a device in a Gateway
+
+The CMS may create a device in the Gateway by sending a POST request with the device class of
+the device (i.e. a device class that is supported by the Gateway) and the value of some or all of
+
+CMS                                                                                Gateway
+
+                    HTTPs REST POST on /devices
+                     HTTPs Response Code 201
+
+                                                 HTTPs REST PATCH on /devices
+                                                    HTTPs Response Code 202
+
+the configuration attributes of each function of the device. Such a POST may include a UUID or
+NIL UUID TALQ address.
+
+If another device already exists in the Gateway with attributes which make it indistinguishable
+(by the Gateway) from the new device, the Gateway shall return the TALQ address of the existing
+device to the CMS if the CMS originally sent a NIL address. However, if the CMS originally sent a
+normal UUID address then the Gateway shall respond with a CONFLICT response. The criteria for
+device uniqueness in a Gateway are specific to the ODN and is outside the scope of TALQ.
+
+                                                 JSON Response
+
+Request URL: https://<gatewayUri>/devices?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-version": "2.6.3"
+}
+Request Content: [
+
+ {
+       "address": "00000000-0000-0000-0000-000000000000",
+       "name": "<deviceName>",
+       "class": "<deviceClassName>",
+       "functions": [
+           {
+                "id": "basic001",
+                "type": "BasicFunction",
+                "displayName": {
+                    "value": "<displayName>"
+
+                                                                                   47 of 66
+TALQ Specification                               Version 2.6.3
+
+                },
+                "assetId": {
+
+                    "value": "<assetId>"
+                },
+                ...
+           },
+           {
+                "id": "lampActuator001",
+                "type": "LampActuatorFunction",
+                "lampTypeId": {
+
+                    "value": "<lampTypeId>"
+                },
+                "maintenanceFactor": {
+
+                    "value": 50
+                },
+                "maintenancePeriod": {
+
+                    "value": 12
+                },
+                ...
+           },
+           ...
+       ]
+   },
+   ...
+]
+
+5.4 Creating a group
+
+The group management service provides mechanisms to define and manage groups. Groups can
+be used across TALQ services whenever there is a need to address a set of devices and/or
+functions together. For instance, an override control command may be sent to a group of devices,
+or the same control program may be distributed to a group of actuators. A group may also
+include other groups as members. Groups can also be used to read multiple attribute values from
+multiple functions of multiple devices as well as in the configuration of the data loggers.
+To create a group a POST request shall be sent by the CMS to the Gateway.
+
+CMS                                                             Gateway
+
+                    HTTPs REST POST on /groups
+                     HTTPs Response Code 201
+
+                                                JSON Response
+
+Request URL: https://<gatewayUri>/groups?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3",
+}
+Request Content: [
+
+   {
+       "address": "110a8321-e34c-112p5-b567-43126738927893",
+       "members": [
+            {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235809"},
+            {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235810"},
+            {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235811"},
+            {"resource": "groups", "address": "110a8321-e34c-112p5-b567-36423054023940392"}
+       ],
+       "purpose": "override"
+
+   },
+
+                                                                                               48 of 66
+TALQ Specification  Version 2.6.3
+
+     ...
+  ]
+
+To update a group, the CMS shall send a PUT request with JSON payload replacing the current
+members with a new list. To delete the group in the Gateway the CMS shall send a DELETE
+request. To add one or more members to a group, the CMS shall send a REST PUT request to:
+/groups/{address}/members
+To delete one member from a group, the CMS shall send a REST DELETE request to:
+/groups/{address}/members/{talqAddress}
+
+5.5 Reporting log values
+
+Configuring a data logger
+
+The TALQ Specification does not specify how physical devices shall carry out measurements on a
+specific ODN, nor how they should communicate the sampled measurements and status attributes
+to the Gateway. However, the Gateway shall ensure the relevant attributes are logged according to
+the recording mode set by the CMS for every data logger. TALQ provides three recording modes:
+
+    · Vendor recording mode: in this mode, attributes shall be logged using a sampling strategy
+         defined by the Gateway vendor. This recording mode is the default one and doesn't require
+         any specific configuration.
+
+CMS                                                     Gateway
+
+                    HTTPs REST POST on /logger-configs
+                         HTTPs Response Code 201
+
+                                                  JSON Response
+
+Request URL: https://<gatewayUri>/logger-configs/<loggerId>?clientAddress=110a8321-e34c-112p5-
+b567-566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+       "address": "110a8321-e34c-112p5-b567-1234567890",
+       "sourceAddresses": {
+
+           "whiteList": [
+            {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235809"},
+            {"resource": "groups", "address": "110a8321-e34c-112p5-b567-36423054023940392"}
+              ...
+
+           ]
+       },
+       "recordingMode": {
+
+            "type": "VendorRecordingMode",
+            "content": [
+
+                {
+                    "functionType": "ElectricalMeterFunction",
+                    "attributes": [
+                       {
+                           "name": "totalActiveEnergy"
+                       },
+                       ...
+                    ]
+
+                                                                                                                                                                            49 of 66
+TALQ Specification  Version 2.6.3
+
+                },
+                ...
+            ]
+       },
+       "reportingMode": { //ScheduledReportingMode
+           "times": ["09:00:00"],
+           "randomTime": 60
+       }
+}
+
+· Periodic recording mode: in this mode, attributes shall be logged using a time-based profile.
+    A single logger shall have one or more sampling profiles for a single set of attributes. Each
+    sampling profile defines one or more instants in time when a sample of all these attributes
+    shall be logged.
+
+CMS                                                     Gateway
+
+                    HTTPs REST POST on /logger-configs
+                         HTTPs Response Code 201
+
+                                                  JSON Response
+
+Request URL: https://<gatewayUri>/logger-configs/<loggerId>?clientAddress=110a8321-e34c-112p5-
+b567-566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+       "address": "110a8321-e34c-112p5-b567-1234567890",
+       "sourceAddresses": {
+
+           "whiteList": [
+            {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235809"},
+            {"resource": "groups", "address": "110a8321-e34c-112p5-b567-36423054023940392"},
+
+...
+           ]
+
+       },
+       "recordingMode": {
+
+            "type": "PeriodicRecordingMode",
+            "content": [
+
+                {
+                    "functionType": "ElectricalMeterFunction",
+                    "attributes": [
+                       {
+                           "name": "totalActiveEnergy"
+                       },
+                       ...
+                    ]
+
+                },
+                ...
+            ],
+            "samplingProfile": {
+                "samplingStartTime": "2013-04-01T00:00:00Z",
+                "samplingPeriod": "P1D"
+            }
+       },
+       "reportingMode": { //ScheduledReportingMode
+           "times": ["09:00:00"],
+           "randomTime": 60
+
+                                                                                                                                                                            50 of 66
+TALQ Specification  Version 2.6.3
+
+         }
+  }
+
+· Event recording mode: In this mode, the data logger shall record events which occur within
+    the ODN. The TALQ defined events may be generic (e.g. invalidAddress), service-specific
+    (e.g. invalidLoggerConfig) or function-specific (e.g. temperatureTooHigh).
+
+CMS                                                     Gateway
+
+                    HTTPs REST POST on /logger-configs
+                          HTTPs Response Code 201
+
+                                                JSON Request Content
+
+  Request URL: https://<gatewayUri>/logger-configs/logger001?clientAddress=110a8321-e34c-112p5-
+  b567-566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+  Request Method: POST
+  Status Code: "201 OK"
+  Request Header: {
+
+     "talq-api-version": "2.6.3"
+  }
+  Request Content: {
+
+         "address": "logger001",
+         "sourceAddresses": {
+
+             "whiteList": [
+              {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235809"},
+              {"resource": "groups", "address": "110a8321-e34c-112p5-b567-36423054023940392"},
+                ...
+
+             ]
+         },
+         "recordingMode": {
+
+             "type": "EventRecordingMode",
+             "sourceEvents": {
+
+                "whiteList": [
+                    "invalidCalendar",
+                    ...
+
+                ]
+             }
+         },
+         "reportingMode": { //ScheduledReportingMode
+             "times": ["09:00:00"],
+             "randomTime": 60
+         }
+  }
+
+Active periods
+
+A condition that defines the periods during a day in which the recording is active. If no active period
+is defined within a recording mode, the recording is active during the whole day. Different active
+periods are possible, such as fixed time periods (start and end times), sunrise-sunset times,
+
+                                                        51 of 66
+TALQ Specification  Version 2.6.3
+
+photocell triggered, sensor triggered, and value triggered. Types and parameters of active periods
+are defined in the TALQ data model file.
+
+Conditionally disabling data recording
+
+Sometimes the data recording needs to be disabled during the day for different reasons. For these
+situations, the CMS may use the active periods to configure when the data must be recorded, e.g.:
+disabling communication failure alarms during the daylight because the cabinet control has power
+only during the night, this the devices are reachable only during the night.
+
+Here is an example of a logger config with an active period:
+
+CMS                                                     Gateway
+
+                    HTTPs REST POST on /logger-configs
+                          HTTPs Response Code 201
+
+                                               JSON Request Content
+
+Request URL: https://<gatewayUri>/logger-configs/logger001?clientAddress=110a8321-e34c-112p5-
+b567-566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+       "address": "logger001",
+       "sourceAddresses": {
+
+           ...
+       },
+       "recordingMode": {
+
+           "type": "EventRecordingMode",
+           "activePeriods": [
+           {
+
+              "type": "ActivePeriodAbsolute",
+              "startTime": "21:30:00",
+              "endTime": "07:00:00"
+           },
+           ...
+       },
+       "reportingMode": { //ScheduledReportingMode
+            ...
+       }
+}
+
+                                                                                               52 of 66
+TALQ Specification  Version 2.6.3
+
+Reporting log values
+
+The reported data log shall include only entries that have not yet been successfully reported. If a
+Gateway cannot send all the data in a single REST request (and associated JSON payload), it shall
+send multiple messages. If the REST request is not acknowledged by the CMS, the Gateway shall
+retransmit it together with any new log records at the next scheduled reporting time. A Gateway
+may retry sending the REST request (and associated JSON payload) according to the "retryTimes"
+attribute set in the logger configuration.
+
+Below is an example of a periodic log report:
+
+CMS                                                  Gateway
+
+                    HTTPs REST POST on /log-reports
+                       HTTPs Response Code 201
+
+                                                     JSON Response
+
+  Request URL: https://<cmsUri>/log-reports?clientAddress=110a8321-e34c-112p5-b567-566655648453
+  Request Method: POST&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+  Status Code: "201 OK"
+  Request Header: {
+
+     "talq-api-version": "2.6.3"
+  }
+  Request Content: {
+
+     "address": "logger001",
+     "entries": [
+
+         {
+              "type": "AttributeLogData",
+              "srcAddress": "110a8321-e34c-112p5-b567-566655685976",
+              "timestamp": "2017-10-16T07:40:00Z",
+              "attributeName": "totalActiveEnergy",
+              "attributeValue": {
+                      "value": 130934.5
+                      "timestamp": "2017-10-16T07:33:16Z",
+              }
+
+         },
+         {
+
+              "type": "AttributeLogData",
+              "srcAddress": "110a8321-e34c-112p5-b567-566655685976",
+              "timestamp": "2017-10-16T07:40:00Z",
+              "attributeName": "totalActivePower",
+              "attributeValue": {
+
+                      "value": 153.3
+                      "timestamp": "2017-10-16T07:33:55Z",
+              }
+         }
+       ]
+  }
+
+Here is an example of event log report:
+
+CMS                                                  Gateway
+
+                    HTTPs REST POST on /log-reports                     53 of 66
+                       HTTPs Response Code 201
+TALQ Specification  Version 2.6.3
+
+                                                JSON Response
+
+  Request URL: https://<cmsUri>/log-reports?clientAddress=110a8321-e34c-112p5-b567-566655648453
+  Request Method: POST&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+  Status Code: "201 OK"
+  Request Header: {
+
+     "talq-api-version": "2.6.3"
+  }
+  Request Content: {
+
+     "address": "logger002",
+     "entries": [
+
+         {
+              "cmsRefId": "<cmsReference>",
+              "data": {
+                  "type": "EventLogData",
+                  "eventType": "changingRelease",
+                  "srcAddress": "110a8321-e34c-112p5-b567-566655648453"
+                  "timestamp": "2018-02-16T07:33:16Z",
+              }
+
+         },
+         {
+
+              "cmsRefId": "<cmsReference>",
+              "timestamp": "2018-02-16T08:26:14Z",
+              "data": {
+
+                  "type": "EventLogData",
+                  "eventType": "releaseChanged",
+                  "srcAddress": "110a8321-e34c-112p5-b567-566655648453"
+                  "timestamp": "2018-02-16T07:33:16Z",
+              }
+         },
+         ...
+     ]
+  }
+
+Asking for a log report
+
+At any time, the CMS may ask the Gateway for a log report. The Gateway shall answer by sending
+the current content of the log report. Here is an example of an "ad-hoc" log report query:
+
+CMS                                                 Gateway
+
+                    HTTPs REST GET on /log-reports
+                       HTTPs Response Code 200
+
+                                               JSON Response
+
+Request URL: https://<gatewayUri>/log-reports/logger001?clientAddress=110a8321-e34c-112p5-b567-
+566655648453
+Request Method: GET
+Status Code: "200 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Response Content: {
+
+   "address": "logger001",
+   "entries": [
+
+                                                                                                                                                                            54 of 66
+TALQ Specification  Version 2.6.3
+
+       {
+            "type": "AttributeLogData",
+            "srcAddress": "110a8321-e34c-112p5-b567-566655685976",
+            "timestamp": "2017-10-16T07:40:00Z",
+            "attributeName": "totalActiveEnergy",
+            "attributeValue": {
+                    "value": 130934.5
+                    "timestamp": "2017-10-16T07:33:16Z",
+            }
+
+       },
+   ]
+}
+
+5.6 Sending an override command
+
+A command defines a type of control action that can be applied to a TALQ function. Commands
+may be generated by a manual override action or by a control program. For example, to send a light
+command by an override action, such as a 50% dimming command to a lamp actuator function on a
+device, a CMS shall send a POST request to gatewayUri/override-commands associated with a JSON
+payload including the addresses of target devices or groups and the command with its parameters
+such as state (e.g. dimming level = 50%) and expiration date.
+Sending override commands is the preferred way to act on a device (e.g. switching or dimming a
+lamp actuator) rather than updating the value of the associated operational attribute of the device,
+providing greater flexibility.
+Here is an example of an override command from a CMS:
+
+CMS                                                                 Gateway
+
+                    HTTPs REST POST on /override-commands
+                             HTTPs Response Code 201
+
+                                                JSON Response
+
+Request URL: https://<gatewayUri>/override-commands?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+   "addresses": [
+         {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235809"},
+         {"resource": "groups", "address": "110a8321-e34c-112p5-b567-36423054023940392"}
+
+       ...
+   ],
+   "targetCommand": {
+
+       "reason": "override",
+       "cmsRefId": "<cmsReference>",
+       "expiration": "2017-10-16T03:33:12Z",
+       "rampToLevelTime": 0.5,
+       "rampFromLevelTime": 2.0,
+       "state": {
+
+         "name": "levelState",
+         "value": 50
+
+                                                                                                                                                                            55 of 66
+TALQ Specification  Version 2.6.3
+
+     }
+  }
+
+The "reason" parameter of a command indicates that the command was triggered by a manual
+override, a sensor or a control program. Permitted values are: unknown, default, override, sensor
+or program.
+The "expiration" parameter is used to set a time to stop an override action. After the expiration of
+an override command, the system should go back to the state defined by the active control
+program. If not specified, there is no expiration for the override command.
+The "rampToLevelTime" is the time (in seconds) taken for the value to ramp to the specified level
+after the reception of this override command request.
+The "rampFromLevelTime" is the time (in seconds) taken for the value to ramp to the specified
+level. The change will be finished rampFromLevelTime seconds after the, in this example, expiration
+date time.
+To resume an override command, the CMS shall send a POST request to the Gateway to resume
+one or more devices to their previous operation mode (e.g. control program). Here is an example of
+an override command resume:
+
+CMS                                                        Gateway
+
+                    HTTPs REST POST on /override-commands
+                             HTTPs Response Code 201
+
+                                JSON Response
+
+Request URL: https://<gatewayUri>/override-commands?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+   "addresses": [
+            {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235809"},
+            {"resource": "groups", "address": "110a8321-e34c-112p5-b567-36423054023940392"},
+
+       ...
+   ]
+}
+
+5.7 Reading attribute values
+
+At any time after the bootstrap process, the CMS may read an attribute value on the Gateway by
+sending a GET request on the device/function/attribute resource. For instance, a GET request on
+the "actualLightLevel" attribute of the lamp actuator function of a device should return the actual
+value of the light level on that device together with the timestamp at which that value was
+measured. Although the attribute's timestamp is not a required property as per the data model
+
+                                                                                                                                                                              56 of 66
+TALQ Specification  Version 2.6.3
+
+OAS file, it is considered a key protocol data for interoperability, and so a mandatory requirement
+to certify a product.
+
+CMS                                             Gateway
+
+                    HTTPs REST GET on /devices
+                    HTTPs Response Code 200
+
+                                              JSON Response
+
+Request URL:
+https://<gatewayUri>/devices/76472384789235810/lampActuator001/actualLightLevel?clientAddress=110a8
+321-e34c-112p5-b567-566655648453
+Request Method: GET
+Status Code: "200 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+   "value": 23,
+   "timestamp": "2017-10-16T07:33:16Z"
+}
+
+5.8 Assigning a control program to a group of devices
+
+Creating a control program
+
+A control program is a generic mechanism, or template, to automate the control of one or more
+devices within a 24hr period. It gathers a set of commands and is associated with calendars to
+indicate the target devices and when (i.e. which days) these commands should be executed.
+A Control Program is a combination of control actions (i.e. commands) and trigger conditions that
+define when these commands should be executed on the target devices. The control program
+consists of the following main components:
+
+    · Active period: a condition that defines the periods during a day in which the control
+         program is active. In other words, it is a condition that determines when the target
+         devices shall be under the control of the corresponding program. If no active period is
+         defined within a control program, the program is active during the whole day. Different
+         active periods are possible, such as fixed time periods (start and end times), sunrise-
+         sunset times, photocell triggered, sensor triggered, and value triggered. By default, an
+         actuator (e.g. generic actuator or lamp actuator) shall be OFF outside the active periods.
+         Types and parameters of active periods are defined in the TALQ data model file.
+
+    · Fixed time control: it defines control commands for specific times during the day. It
+         includes a start time and the command to be applied. A control program may contain one
+         or more fixed time control elements. The end time of a fixed time control element is
+         determined by the start time of the next fixed time control element in the control
+         program. The next fixed time control element is with respect to the time order of the
+         elements. The fixed time control entries within a program shall be included in ascending
+
+                                                                                                                                                                              57 of 66
+TALQ Specification  Version 2.6.3
+
+    order to allow the next element to be easily identified. No two entries shall have exactly
+    the same start time. Each parameter of fixed time control is defined in the TALQ data
+    model file.
+· Dynamic control: it defines control commands based on external trigger conditions (e.g.
+    sensors) as well as a period (start and end times), which determines when the dynamic
+    control is active during the day. The control commands may be specified in the program
+    and triggered by an external source (e.g. sensor) or both control command and trigger
+    may be specified by an external source. Furthermore, the dynamic control element also
+    defines an operation effect (set, min, max, add, subtract, multiply) that the control action
+    shall have on the current command. For example, if presence is detected by a sensor, light
+    level could be configured by a control program to increase by 25% (add effect) or be set to
+    75% (set effect) or be set to 75% except if current level is already above that value (max
+    effect).
+    Multiple dynamic control elements may be active simultaneously and priority is
+    determined by the order in which they are defined in the control program structure. Each
+    parameter of dynamic control is defined in the TALQ data model file.
+    Dynamic control enables use cases such as:
+
+         o Dynamic outdoor lighting: automatically adjusting light levels on groups of
+             streetlights when vehicles and/or pedestrians are detected or depending on
+             vehicle count or speed.
+
+         o Water irrigation: irrigating plants only when humidity is low and depending on sun
+             and temperature.
+
+         o Dynamic city information panel: displaying automatic messages on city
+             information panels depending on traffic and/or pollution measurements.
+
+                                   58 of 66
+TALQ Specification  Version 2.6.3
+
+To create a control program, the CMS shall send a REST POST request to the Gateway, examples
+are shown below:
+
+CMS                                                       Gateway
+
+                    HTTPs REST POST on /control-programs
+                           HTTPs Response Code 201
+
+                                              JSON Response
+
+Request URL: https://<gatewayUri>/control-programs?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+   "id": "<controlPrgramAddress>",
+   "activePeriods": [
+
+       {
+           "type": "ActivePeriodAbsolute",
+           "startTime": "21:30:00",
+           "endTime": "07:00:00"
+
+       },
+       ...
+   ],
+   "fixedTimeControls": [
+
+          {
+              "startTime": "00:00:00",
+              "command": {
+                 "state": {
+                     "name": "LevelState",
+                     "value": 70
+                 }
+              }
+
+          },
+          {
+
+              "startTime": "05:00:00",
+              "command": {
+
+                 "state": {
+                     "name": "LevelState",
+                     "value": 100
+
+                 }
+              }
+          },
+          {
+              "startTime": "23:00:00",
+              "command": {
+
+                 "state": {
+                     "name": "LevelState",
+                     "value": 70
+
+                 }
+              }
+           }
+   ]
+}
+
+                                                                                            59 of 66
+TALQ Specification  Version 2.6.3
+
+CMS                                                       Gateway
+
+                    HTTPs REST POST on /control-programs
+                           HTTPs Response Code 200
+
+                                                 JSON Response
+
+Request URL: https://<gatewayUri>/control-programs?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+   "id": "<controlPrgramAddress>",
+   "activePeriods": [
+
+       {
+           "type":"ActivePeriodLightSensor",
+           "sensor": ["<lightSensorTALQAddress>", ...],
+           "onIlluminance": 0.2,
+           "offIlluminance": 0.6
+
+       },
+       ...
+   ],
+   "fixedTimeControls": [
+
+          {
+              "startTime": "00:00:00",
+              "command": {
+                 "state": {
+                     "name": "LevelState",
+                     "value": 70
+                 }
+              }
+
+          },
+          {
+
+              "startTime": "05:00:00",
+              "command": {
+
+                 "state": {
+                     "name": "LevelState",
+                     "value": 100
+
+                 }
+              }
+          },
+          {
+              "startTime": "23:00:00",
+              "command": {
+
+                 "state": {
+                     "name": "LevelState",
+                     "value": 70
+
+                 }
+              }
+           }
+   ],
+   "dynamicControl": [
+          {
+              "period": {
+
+                  "startTime": "05:30:00",
+                  "endTime": "16:00:00"
+              }
+              "effect": {
+                 "type": "ExternalControlEffect",
+                 "operation": "max",
+                 "holdTime": 10.0,
+                 "source": {
+
+                                                                                                                                                                            60 of 66
+TALQ Specification  Version 2.6.3
+
+                     "sensor": ["myTrafficSensorTALQAddress", ...]
+                     }
+                 }
+              }
+          },
+          ...
+   ]
+}
+
+Creating a calendar
+
+A calendar is a set of rules that describe which days and which control program shall be applied
+to which device or groups of devices. The combination of calendars and control programs
+provides the flexibility necessary to implement schedule-based control which may be different
+for week-days and week-ends, in different seasons, during vacation time or on special days. Day-
+based and date-based rules can be programmed in the calendar and a control program shall be
+assigned to each rule. Rules priorities (e.g. between the first Thursday of the month and the 3rd of
+June if the 3rd of June is the first Thursday of the month) is defined by the order in the JSON
+payload structure.
+The create a calendar, the CMS shall send a POST request to the Gateway as the example below:
+
+CMS                                                                                  Gateway
+
+                    HTTPs REST POST on /calendars
+
+                    HTTPs Response Code 201
+
+                                              JSON Response
+
+Request URL: https://<gatewayUri>/calendars?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: [
+
+   {
+       "id": "myCalendar4",
+       "rules": [
+          {
+              "startDate": "2018-07-18",
+              "endDate": "2018-07-25",
+              "program": "myControlProgram3"
+          },
+          {
+              "condition": {
+                   "type": "ccDate",
+                   "dates": [
+                       {
+                            "start": "--10-16"
+                       }
+                   ]
+              },
+              "program": "myControlProgram2"
+          },
+      ],
+      "defaultProgram": "myControlProgram1"
+
+   }
+]
+
+                                                                                              61 of 66
+TALQ Specification  Version 2.6.3
+
+Assigning a calendar to devices
+
+To assign a calendar to TALQ functions in a device or a group of devices, a CMS shall send a POST
+request to gatewayUri/assign-commands associated with a JSON payload that shall include the
+TALQ addresses of the devices or group of devices, and the address of the entity to be assigned. If
+no specific function is indicated in the address, the command shall apply to a group of devices
+indicated in the JSON payload. Any entity associated with the address(es) can be de-associated by
+setting the "entity.resource" but not the "entity.address" e.g:
+entity:{resource:"calendars",address:""}.
+Sending assign commands is the preferred way to act on a device (e.g. assigning a calendar to a
+lamp actuator) rather than updating the value of the associated operational attribute of the
+device, providing greater flexibility.
+Asynchronous and synchronous behaviors are allowed. If a synchronous response is received
+(201-Created) the assignment is considered finished and thus the related devices updated. When
+an asynchronous response is returned (202-Accepted), the assignment is considered being
+processed and the CMS expects a PATCH request, or several, from the Gateway sometime in the
+future. The PATCH request(s) from the Gateway will include the list of all the affected devices.
+
+CMS                                                      Gateway
+
+                    HTTPs REST POST on /assign-commands
+                             HTTPs Response Code 201
+
+                                              JSON Payload
+
+Request URL: https://<gatewayUri>/assign-commands?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+Request Method: POST
+Status Code: "201 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Request Content: {
+
+   "addresses": [
+            {"resource": "devices", "address": "110a8321-e34c-112p5-b567-76472384789235809"},
+            {"resource": "groups", "address": "110a8321-e34c-112p5-b567-36423054023940392"}
+
+         ...
+   ],
+   "entity": {"resource": "calendars", "address": "calendar1"}
+}
+
+                                                                                               62 of 66
+TALQ Specification  Version 2.6.3
+
+5.9 Sending a firmware update
+
+To indicate a firmware update to devices or to the Gateway, the CMS shall send a PUT request on
+the /data-packages resource of the Gateway with some JSON payload that contains:
+
+    · A package identifier for the firmware package,
+    · A release identifier for the firmware package,
+    · The URI of firmware package to download the new binary content.
+Here is an example of firmware update:
+
+CMS                                                   Gateway
+
+                    HTTPs REST PUT on /data-packages
+                         HTTPs Response Code 204
+
+                                               JSON Response
+
+  Request URL: https://<gatewayUri>/data-packages?clientAddress=110a8321-e34c-112p5-b567-
+  566655648453&talqRequestId=f18c6955-d9d4-45fc-89f5-6590fa6521fa
+  Request Method: PUT
+  Status Code: "204 OK"
+  Request Header: {
+
+     "talq-api-version": "2.6.3"
+  }
+  Request Content: {
+
+     "packageId": "<packageId>",
+     "releaseId": "3.2.4",
+     "downloadUri": "..."
+  }
+
+It is the responsibility of the Gateway to accept or refuse the firmware update and, if accepted, to
+execute it (e.g download and install in the appropriate device). It is not in the scope of TALQ to
+define the execution process. The Gateway may then send one or more of the following events,
+using the data collection service, to indicate progress:
+
+    · releaseMismatch when the release indicated in the JSON payload is not compatible with
+         some hardware on the ODN or not recognized as a valid release by the Gateway.
+
+    · changingRelease when the Gateway has started the process of changing the release on
+         the target devices.
+
+    · changeReleaseFailure when the release change failed, to inform the CMS that the release
+         identifier on the target devices remained the release identifier prior the operation.
+
+    · releaseChanged when the release is downloaded and running on each target device.
+
+5.10 Reading a partial list of devices
+
+The optional devices pagination feature can be used for reading a partial list of devices from a large
+set of them.
+Pagination is based on two query parameters at the request: offset and limit. The server will
+answer with a partial list of devices with a 'limit' number of devices starting at 'offset' index. If none
+of the parameters are present, pagination won't be used and the result will include the whole list of
+devices.
+
+                                                                                                                                                                              63 of 66
+TALQ Specification  Version 2.6.3
+
+Pagination requires an implied ordering/indexing, although it is outside TALQ scope and will be the
+Gateway responsibility.
+When pagination is active, the response headers also include useful information related to it.
+The Gateway shall announce if it supports pagination by setting devicePaginationSupported=true in
+the Configuration Service announcement.
+Below there is an example where the CMS asks the GW for the first 10 devices. The server answers
+with a list of devices and metadata information at the response headers related to pagination.
+
+CMS                                                                                Gateway
+
+                    HTTPs REST GET on /devices
+
+                    HTTPs Response Code 200
+
+                        JSON Response
+
+Request URL: https://<gatewayUri>/devices?clientAddress=110a8321-e34c-112p5-b567-
+566655648453&offset=0&limit=10
+Request Method: GET
+Status Code: "200 OK"
+Request Header: {
+
+   "talq-api-version": "2.6.3"
+}
+Response Header: {
+
+   " pagination-offset": 0,
+   " pagination-defaultLimit": 20,
+   " pagination-count": 10,
+   " pagination-totalCount": 100,
+
+}
+Response Content: [
+
+     {
+           "address": "D5144581-E2B4-4116-AC29-55357714768D", // Index: 0
+           "deviceClass": "lampClass",
+           "functions":[
+           ...
+           ]
+
+     },
+     ...
+     {
+
+           "address": "9994E758-38C6-4E7B-83A0-731B5AED7C72", // Index: 9
+           "deviceClass": "lampClass",
+           "functions":[
+           ...
+           ]
+     },
+]
+
+                                                                                            64 of 66
+TALQ Specification  Version 2.6.3
+
+6 REFERENCES
+
+6.1 Normative references
+
+    · [RFC 2616] Hypertext Transfer Protocol -- HTTP/1.1
+         (http://www.tools.ietf.org/html/rfc2616)
+
+    · [RFC 6202] Known Issues and Best Practices for the Use of Long Polling and Streaming in
+         Bidirectional HTTP
+
+    · [RFC 2818] HTTP Over TLS (http://tools.ietf.org/html/rfc2818)
+    · [RFC 5246] The Transport Layer Security (TLS) Protocol Version 1.2
+
+         (http://tools.ietf.org/html/rfc5246)
+    · [RFC 2396] Uniform Resource Identifiers (URI): Generic Syntax
+
+         (http://www.ietf.org/rfc/rfc2396)
+    · [RFC 4122] A Universally Unique IDentifier (UUID) Namespace
+
+         (https://tools.ietf.org/html/rfc4122)
+    · [Krawczyk97] H. Krawczyk, M. Bellare and R. Canetti, HMAC: Keyed-Hashing for Message
+
+         Authentication, RFC 2104, February 1997.
+    · [Chown02] P. Chown, AES Ciphersuites for TLS, RFC 3268, June 2002.
+    · [Cooper08] D. Cooper, S. Santesson, S. Farrell, S. Boeyen, R. Housley, W. Polk, Internet
+
+         X.509 Public Key Infrastructure Certificate and Certificate Revocation List (CRL) Profile,
+         RFC 5280, May 2008.
+    · [ISO8601] ISO 8601:2004 ISO (International Organization for Standardization), Data
+         elements and interchange formats ­ Information interchange -- Representations of dates
+         and times.
+    · [RSA78] Rivest, R.; A. Shamir; L. Adleman, A Method for Obtaining Digital Signatures and
+         Public-Key Cryptosystems, Communications of the ACM 21 (2): 120­126, 1978.
+    · [RFC 1630] Universal Resource Identifiers in WWW (http://tools.ietf.org/html/rfc1630)
+    · [RFC 1738] Uniform Resource Locators (URL) (http://tools.ietf.org/html/rfc1738)
+    · [RFC 1808] Relative Uniform Resources Locators (http://tools.ietf.org/html/rfc1808)
+    · [RFC 2717] Registration Procedures for URL Scheme Names
+         (http://tools.ietf.org/html/rfc2717)
+    · [IANA] IANA time zone database (Olson database). http://www.iana.org/time-zones.
+    · [POSIX] Open Group for posix systems.
+         http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html
+
+    · [JSONSCHEMA] More details about specifications: http://json-
+         schema.org/specification.html
+
+6.2 Informative references
+
+    · [Fielding] Fielding, Roy Thomas (2000), "Architectural Styles and the Design of Network-
+         based 668 Software Architectures", Doctoral Dissertation, University of California, Irvine.
+
+    · [LSD64-2012] Lighting Control Terminology, A NEMA Lighting Systems Division Document
+         (LSD 64-2012).
+
+                                                                                                                                                                              65 of 66
+TALQ Consortium
+445 Hoes Lane
+Piscataway
+NJ 08854, USA
+info@talq-consortium.org
+www.talq-consortium.org
+

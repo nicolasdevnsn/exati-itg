@@ -1,0 +1,564 @@
+===============================================================================
+ INTEGRACAO TALQ NANSEN x EXATI
+ SNAPSHOT DE DUVIDAS EM ABERTO - 12/08/2026
+===============================================================================
+
+ ESTE ARQUIVO E UMA FOTO DE UM MOMENTO ESPECIFICO.
+
+ Marco: o mTLS contra o iotcertifier foi resolvido e o Gateway Announcement
+ (passos 1 a 3) foi executado com sucesso. As duvidas abaixo sao as que
+ bloqueavam o passo SEGUINTE - o Service Announcement - nesta data.
+
+ Antes de reabrir qualquer item daqui, confira a secao "JA RESOLVIDO" no fim:
+ varias duvidas que existiam ate 11/08 foram fechadas por teste e NAO devem
+ voltar a pauta.
+
+
+###############################################################################
+ ONDE ESTAVAMOS EM 12/08/2026
+###############################################################################
+
+Ambiente: iotcertifier.exati.com.br:8443  (staging foi descartado pela EXATI)
+Base:     /cms/<token>/<recurso>          (sem prefixo /talq)
+
+Bootstrap executado com sucesso:
+
+  passo 1  POST  /devices                              -> 201 Created
+  passo 2  POST  /device-classes?clientAddress=<gw>    -> 201 Created
+  passo 3  PATCH /devices/<gw>?clientAddress=<gw>      -> 200 OK
+  passo 4  (do CMS para o nosso gatewayUri)            -> PENDENTE
+
+Identidades atribuidas pelo CMS:
+
+  gatewayAddress   4c06a713-d01b-4146-ae20-f3c77e2bad33
+  cmsAddress       10000000-0000-0000-0000-000000000001
+
+Estado do CMS: GET /groups ainda responde
+  403 [{"key":"payloadError",
+        "description":"Bootstrap not complete — only bootstrap requests are accepted"}]
+Correto - faltam Service Announcement e Device Class Announcement.
+
+
+###############################################################################
+ A. DECISOES INTERNAS DA NANSEN  (ninguem de fora responde)
+###############################################################################
+
+Bloqueiam o Service Announcement. Os valores anunciados VIRAM CONTRATO: o CMS
+os respeita e o certifier pode testa-los.
+
+A1. Quais servicos TALQ o nosso gateway implementa?
+    ControlService, GroupManagementService, DataCollectionService,
+    ConfigurationService. Cada servico declarado e um compromisso de
+    implementar as rotas correspondentes.
+
+A2. Quais os limites numericos reais?
+    maximumCalendars, maximumPrograms, maxProgramsPerCalendar,
+    maxSwitchPointsPerProgram, dayOffset, maximumNumberOfGroups,
+    maximumGroupSize.
+    Anunciar 30 e suportar 10 = falha de conformidade.
+    Anunciar 10 e suportar 30 = limitar o produto a toa.
+
+A3. Qual perfil declaramos? (presumivelmente Lighting)
+    O perfil muda o que e obrigatorio (secao 4.3, p.35). A mesma funcao pode
+    ser opcional em Lighting e mandatoria em Cabinet Control.
+
+A4. Qual o hostname publico do gateway?
+    Bloqueia o passo 4 do bootstrap e todas as 44 rotas de callback.
+    Quando definido, reemitir o gw.crt com o SAN correto e RECADASTRAR no
+    dashboard (o modelo e pinning - ver secao JA RESOLVIDO, item R6).
+
+A5. Como modelamos os dispositivos de campo?
+    Quais funcoes TALQ compoem cada device class.
+    ATENCAO: classe CRESCE mas NUNCA ENCOLHE (secao 5.1, p.43). Remover um
+    atributo depois exige anunciar classe NOVA. Nao improvisar.
+
+
+-------------------------------------------------------------------------------
+ LEVANTAMENTO DE 12/08 - ESTADO DO CODIGO E INSUMOS PARA A1..A5
+-------------------------------------------------------------------------------
+
+O que o exati-itg E hoje: middleware Spring Boot 3 / Java 21, 51 classes.
+Faz a ponte IoT Hub (TALQ) <-> plataforma AMI Sanxing (MySQL ami/nms), sempre
+via o microservico ami-cim - o exati-itg NAO acessa o banco direto.
+
+O QUE JA EXISTE
+  - TalqResourceClient: CRUD de /talq/device-classes e /talq/devices
+  - DTOs TALQ: DeviceClass, Device, Function, Attribute, VendorAttribute, Event
+  - ExatiProperties: auth pluggavel  none | bearer | apikey
+
+O QUE NAO EXISTE (lacunas confirmadas por busca no codigo)
+  - BOOTSTRAP: nenhum gateway announcement, nenhum service announcement,
+    nenhuma nocao de GatewayFunction. Zero ocorrencias no codigo.
+  - mTLS: o enum de auth nao contempla certificado de cliente. O certifier
+    exige. Precisa de keystore/truststore no RestClient.
+  - LADO SERVIDOR: nenhuma das 44 rotas de callback. Os controllers existentes
+    sao todos da nossa API interna (auth, solicitacoes, proxy CIM, devices).
+  - Paths e base URL apontam para o STAGING (/talq/..., EXATI_BASE_URL=
+    https://iot.exati.com.br/staging). Para o certifier: base /cms/<token>,
+    SEM prefixo /talq.
+
+BUG ENCONTRADO DE PASSAGEM
+  TalqResourceClient.modifyDevice() (PATCH) e o UNICO metodo que nao envia
+  clientAddress - todos os irmaos usam queryParamIfPresent. Como agora sabemos
+  que o parametro e obrigatorio de fato, isso quebraria em runtime.
+
+INSUMO PARA A5 (modelagem) - o mapeamento AMI ja documentado sugere o conjunto
+de funcoes quase que diretamente:
+
+  Conceito AMI                          Funcao TALQ candidata
+  archive_meter (luminaria = medidor)   BasicFunction (displayName, assetId,
+    latitude/longitude                    location)
+  ops_manual_switch_relay /             LampActuatorFunction
+    ops_auto_switch_relay (rele)
+  dados de medicao                      LampMonitorFunction /
+                                          ElectricalMeterFunction
+  nms_leaf_node_module (qualidade RF)   CommunicationFunction
+  monitor_online_info,                  eventos: communicationFailure
+    monitor_meter_status
+
+  Observacao: a plataforma e de MEDICAO, entao ElectricalMeterFunction sai
+  quase de graca - e diferencial em relacao a um controlador de luz simples.
+
+INSUMO PARA A4 (hostname) - ja existe ponto de entrada publico na VM:
+  http://3.88.22.232:18088/exati-itg/**   (AMI-ZUUL)
+  Mas o TALQ exige HTTPS (secao 3.6). Ou seja: o gatewayUri pode ser esse host
+  com terminacao TLS, mas isso precisa ser montado. NAO ha HTTPS hoje.
+
+A CONFIRMAR COM O TIME (nao consegui responder pelo codigo/schema)
+  - a plataforma AMI suporta CALENDARIO/PROGRAMA de iluminacao, ou so
+    liga/desliga por comando e um agendamento simples? Encontrei
+    ops_auto_switch_relay e ops_auto_adjust_clock_scheme, mas nada que se
+    pareca com o modelo de calendars + control-programs do TALQ.
+    >> isso decide se podemos anunciar ControlService.
+  - existe modelo de GRUPOS de luminarias no AMI?
+    >> isso decide se podemos anunciar GroupManagementService.
+  - ha DIMERIZACAO, ou so ON/OFF?
+    >> decide se LampActuatorFunction anuncia levels 0-100 ou so
+       {start:0,end:0} e {start:100,end:100}.
+
+
+-------------------------------------------------------------------------------
+ RESPOSTAS DO TIME + MAPEAMENTO TALQ (12/08, sessao de decisao)
+-------------------------------------------------------------------------------
+
+DIMERIZACAO: 0 a 100%, todas as graduacoes.
+  -> LampActuatorFunction, levels: [{"start":0,"end":100}]
+  -> DimLevel e INTEGER 0-100: granularidade de 1%, sem fracao.
+  -> A CONFIRMAR: o hardware faz 101 passos reais ou opera em degraus
+     (ex. 10 em 10)? Anunciar faixa continua que o equipamento nao entrega
+     e declaracao falsa.
+
+OS CINCO MODOS DE CONTROLE - O TALQ TEM TODOS NATIVAMENTE:
+
+  Modo do time                       Tipo TALQ (ActivePeriod)
+  sensor de luminosidade local       SensorActivePeriod
+                                       (sensor, onLevel, offLevel)
+  agendado no calendario             AbsoluteActivePeriod
+                                       (startTime, endTime)
+  geolocalizacao / astronomico       AstroClockActivePeriod
+                                       (sunsetOffset, sunriseOffset em minutos,
+                                        aceita negativo)
+  astronomico + sensor               AstroAndSensorActivePeriod  <-- EXISTE
+                                       (sensor, sunsetOffset, sunriseOffset,
+                                        pcActiveBeforeSunset,
+                                        pcActiveBeforeSunrise)
+  agendamento + sensor               AbsoluteActivePeriod + SensorActivePeriod
+                                       no mesmo control program
+                                       (limite: maxActivePeriodsPerProgram)
+
+  ACHADO ESTRATEGICO: no perfil lighting, apenas AbsoluteActivePeriod e
+  mandatorio para o GATEWAY (cms:M, gw:M). Todos os outros quatro sao
+  cms:M / gw:O - ou seja, OPCIONAIS PARA NOS.
+  Consequencia: da para entregar o basico primeiro e crescer, sem perder
+  conformidade.
+
+  Resolucao de conflito entre elementos simultaneos: prioridade e a ORDEM DO
+  ARRAY no control program (nao ha semantica). Efeitos de operacao
+  disponiveis: set | min | max | add | subtract | multiply.
+  Fora dos active periods, atuador fica OFF por padrao (secao 5.8, p.57).
+
+GRUPOS: o Group exige address, members, ownerCMS. Ha tambem 'purpose'.
+  NAO existe criterio semantico no TALQ - agrupar por rua, bairro ou circuito
+  e decisao do operador, nao do protocolo.
+  No perfil lighting Group e cms:M / gw:O -> OPCIONAL para nos.
+  Quem cria grupo e o CMS.
+  ARMADILHAS: grupo e SNAPSHOT, nao referencia viva - se um calendario for
+  atribuido a um grupo e a composicao mudar depois, o calendario permanece com
+  os membros ORIGINAIS. Grupos podem conter outros grupos (cuidado com ciclo).
+
+OS SEIS SERVICOS E SEUS LIMITES:
+
+  ControlService          maximumCalendars, maximumPrograms,
+                          maxProgramsPerCalendar, maxSwitchPointsPerProgram,
+                          maxActivePeriodsPerProgram,
+                          dayOffset (SO 0 ou 12),
+                          maxNumberOfPowerFactorThresholdDimmingCurveItems,
+                          maxNumberOfLumenDepreciationCurveItems
+                          + supportedTypes, ccDateSupport, ccDaySupport,
+                            programSecondsSupported
+
+  GroupManagementService  maximumNumberOfGroups, maximumGroupSize
+                          + attributes
+
+  DataCollectService      maximumDataLogs, samplingAccuracy,
+                          minCollectionTime, minCollectionTimePerAttribute
+                          + supportedModes, loggableAttributes,
+                            samplingPeriodSupported, attributeScopeSupported,
+                            recordingActivePeriodsSupported, supportedTypes
+
+  ConfigurationService    SEM limites numericos.
+                          commissioningSupported, devicesPaginationSupported,
+                          supportedProfiles  <-- E AQUI QUE O PERFIL E
+                                                 DECLARADO
+
+  DataPackageService      so 'name'
+  AssetManagementService  so 'name'
+
+PERFIS DISPONIVEIS (7):
+  lighting, wasteManagement, environmentalMonitoring, smartParking,
+  smartTraffic, lightingAssetManagement, cabinetControl
+  Para nos: lighting certo. Avaliar lightingAssetManagement, ja que o AMI tem
+  dados ricos de ativo (tipo de luminaria, driver, instalacao).
+
+"DA PRA USAR QUALQUER UM E ATUALIZAR DEPOIS?" - RESPOSTA E: DEPENDE DA DIRECAO
+  CRESCER e seguro. ENCOLHER nao e.
+  - Device class: cresce mas NUNCA encolhe (secao 5.1, p.43). Remover atributo
+    exige anunciar CLASSE NOVA.
+  - Anunciar atributo/funcao = COMPROMISSO de implementar. Anunciar a mais
+    para "garantir" e o erro caro; anunciar de menos e corrigivel.
+  - Limites de servico: o CMS respeita os numeros. Baixar depois pode
+    invalidar estado ja criado no CMS.
+  - Perfil: adicionar perfil depois traz novos itens MANDATORIOS junto.
+  - Certificacao e por PRODUTO: mudar o escopo depois pode exigir recertificar.
+  >> REGRA PRATICA: declarar o MINIMO que sustentamos hoje.
+
+COMO SE MODELA UMA CLASSE (parametros):
+  DeviceClass
+    name                     obrigatorio
+    functions[]  -> FunctionDesc
+        functionId           obrigatorio (ex. "lampActuator001")
+        type                 obrigatorio (ex. "LampActuatorFunction")
+        attributes[]         -> AttributeDesc
+        vendorAttributes[]   -> AttributeDesc + scope + type (obrigatorios)
+        events[]
+  AttributeDesc: name (obrigatorio), description, minValue, maxValue, regEx,
+                 readOnly, enumValues, unit, commands, types
+  REGRA: "All attributes used by the end point shall be announced, whether
+  they are optional or mandatory."
+
+
+-------------------------------------------------------------------------------
+ FORMULARIO PARA OS RESPONSAVEIS DE PRODUTO
+-------------------------------------------------------------------------------
+
+Pagina web publicada para o pessoal de produto declarar o que a luminaria
+realmente suporta (funcoes, atributos, eventos, servicos, limites, modos de
+controle e dimerizacao):
+
+  https://claude.ai/code/artifact/899e6736-4506-49dd-bd43-350848c5e16a
+
+Fonte dos dados: talq-data-model-2-6-3-online.json - 10 funcoes relevantes ao
+perfil lighting, com descricao oficial e selo de obrigatoriedade (gw/lighting)
+por item. Cada item tem um botao "i" que revela a descricao.
+
+Gera resumo em texto + JSON para devolver a equipe de integracao.
+
+NOTA: o artifact nasce PRIVADO. Para enviar aos responsaveis e preciso
+compartilhar pelo menu da propria pagina.
+
+Arquivo fonte: scratchpad/levantamento-talq.html (regeravel a partir de
+form-template.html + funcs.json).
+
+
+###############################################################################
+ B. PERGUNTAS PARA A EXATI
+###############################################################################
+
+B1. O certifier exige que o gatewayUri esteja no ar para o bootstrap fechar?
+    Ele tenta o PATCH do passo 4 imediatamente? Faz retry? Tem timeout?
+    Ou o bootstrap conclui e ele chama depois?
+
+B2. O certificado de servidor do nosso gateway precisa ser o mesmo gw.crt
+    cadastrado no produto? O modelo de pinning vale para as duas direcoes?
+
+B3. gatewayUri com porta nao-padrao e aceito?
+
+B4. Quais atributos o CMS define no passo 4, e precisamos persistir?
+
+B5. Servicos podem ser reanunciados/alterados depois? Para device classes a
+    regra e "cresce mas nao encolhe" - nao ha equivalente documentado para
+    servicos.
+
+B6. A bateria de testes automaticos valida os limites anunciados?
+    Se sim, os numeros precisam ser verdadeiros ANTES de rodar.
+
+B7. LampType (deprecado, secao 4.5) ou os quatro tipos novos
+    (LuminaireType, BracketType, DriverType, ControllerType)?
+    Qual o certifier espera?
+
+B8. Como iniciamos a bateria de testes automaticos no dashboard?
+    Existe documentacao do procedimento, dos casos cobertos e do criterio de
+    aprovacao? Os relatorios ficam vinculados ao produto?
+
+B9. A bateria testa apenas o gateway como cliente (bootstrap), ou tambem
+    exercita as 44 rotas que o CMS chama no gateway? Precisamos ter o
+    gatewayUri publico e respondendo antes de iniciar?
+
+
+###############################################################################
+ C. RESOLVIVEIS POR TESTE  (nao dependem de ninguem)
+###############################################################################
+
+C1. talq-api-version: venho enviando 2.6.0 (valor do exemplo do portal) e
+    passou, mas a spec e 2.6.3. Testar se 2.6.3 e aceito e se versao invalida
+    e rejeitada.
+
+C2. talqRequestId e talqOriginRequestId: a secao 3.5 lista os dois como query
+    params de rastreamento. NAO foram enviados em nenhuma requisicao e tudo
+    passou. Confirmar se sao opcionais no certifier ou se a ausencia reprova
+    na certificacao.
+
+C3. cache-control: no-transform - enviado nos POST/PATCH, nao nos GET.
+    A spec exige em requisicao E resposta.
+
+C4. Content-Encoding: a spec obriga o servidor a ecoar a codificacao do
+    cliente e suportar gzip/deflate/none, com 415 para nao suportada.
+
+C5. Rejeicao de requisicao inteira em erro parcial (secao 3.4, p.18):
+    mandar lote com um item invalido e confirmar que NADA e aplicado.
+
+C6. Os 404 "Unknown resource type" em GET /devices, /device-classes e
+    /services: agora que estamos autenticados, descobrir se e metodo errado
+    ou rota inexistente.
+
+
+###############################################################################
+ ADENDO DE 13/08/2026 - AUDITORIA E ACHADOS
+###############################################################################
+
+AUDITORIA DE OBRIGATORIEDADE (o achado mais importante do dia)
+--------------------------------------------------------------
+NENHUMA das 10 funcoes e obrigatoria para o gateway no perfil lighting.
+Todas sao gw:O. Verificado no nivel da propria funcao, nao so dos atributos.
+
+  funcao                     gw   cms   itens-M internos
+  BasicFunction              O    M     3
+  LampActuatorFunction       O    M     6
+  LampMonitorFunction        O    M     1
+  ElectricalMeterFunction    O    M     0
+  CommunicationFunction      O    M     2
+  PhotocellFunction          O    M     1
+  LightSensorFunction        O    O     1
+  TimeFunction               O    O     1
+  LuminaireAssetFunction     O    O     8
+  SegmentMonitorFunction     O    O     1
+
+  >> A obrigatoriedade e CONDICIONAL: "se voce declarar esta funcao, estes
+     itens dentro dela passam a ser exigidos". A decisao real e sobre a
+     FUNCAO; os itens vem no pacote.
+  >> Consequencia pratica: declarar LuminaireAssetFunction custa 8 atributos
+     obrigatorios de uma vez. ElectricalMeterFunction (118 itens) custa zero.
+
+INCONSISTENCIAS NA PROPRIA SPEC
+--------------------------------
+1. NOVE itens onde x-talq-mandatory-gw discorda de x-talq-profiles.lighting.gw:
+     LampMonitorFunction.dimmingFailure    flag=true  vs  perfil=O
+     LuminaireAssetFunction (os 8 itens)   flag=false vs  perfil=M
+   Seguimos o PERFIL, que e o mais especifico. O formulario mostra o conflito
+   em vez de escolher em silencio.
+
+2. BasicFunction.currentTime e DEPRECADO (desde 2.4.0, movido para a
+   TimeFunction) E AO MESMO TEMPO obrigatorio no perfil lighting.
+   >> PERGUNTA LEGITIMA PARA A EXATI: se implementarmos a TimeFunction, qual
+      dos dois o certifier espera?
+
+3. Ha 14 atributos deprecados no total (8 em BasicFunction, 4 em
+   LampMonitorFunction, 2 em SegmentMonitorFunction).
+
+4. OITO itens de LuminaireAssetFunction sao obrigatorios SOMENTE no perfil
+   lightingAssetManagement (bracketTypeAddress, virtualPowerOutput,
+   mountingOption, warrantyExpirationDate, manufactureYear, manufactureWeek,
+   warrantyYears, applicationType). Hoje opcionais. Se alguem adicionar aquele
+   perfil depois, viram obrigacao retroativa.
+
+states/levels - VERIFICADO, NAO E BLOQUEADOR
+---------------------------------------------
+Portal declara (literal):  states: {type:object, properties:{}}
+                           levels: {type:object, properties:{}}
+                           required: [states, levels]
+   -> exige os dois e nao diz a forma. Alem disso, commands.attributes esta
+      malformado: type:string com items E enum no mesmo nivel.
+
+Certifier ACEITA a estrutura oficial completa (testado, 201 Created, devolveu
+identica):
+   "commands":{"scope":"override",
+               "levels":[{"start":0,"end":0},{"start":10,"end":100}],
+               "states":[{"name":"LevelState"},{"name":"BooleanState"}],
+               "attributes":["reason","expiration","rampToLevelTime"]}
+
+DIAGNOSTICO DA CAUSA: as chaves x-apidog-orders e x-apidog-ignore-properties
+no schema do portal revelam que ele e gerado no APIDOG, e properties:{} e a
+assinatura de import que ACHATOU schemas referenciados por $ref. Nao e
+descuido de quem escreveu - e ferramenta. Provavelmente afeta outros pontos.
+
+   >> Pergunta melhor para a EXATI: "a importacao para o Apidog achatou os
+      schemas com $ref; vale reimportar a spec?" - em vez de pedir correcao
+      campo a campo.
+
+TIER 1 / SOLICITACOES - ONDE FOI PARAR
+---------------------------------------
+Nao existe mais no de "Tier 1" no menu. O conteudo foi absorvido pela
+"Visao geral" DO TIER 2 (visao-geral-1603086m0), secao 5 "Solicitacoes":
+   "...interagir com as solicitacoes gerados por um dispositivo"
+   "requisicoes de solicitacoes geradas por um dispositivo (/tickets)"
+   tres operacoes: criacao, cancelamento e CONSULTA
+
+VARREDURA COMPLETA das 8 paginas de prosa do portal: essa e a UNICA mencao.
+As outras 41 URLs sao paginas de endpoint (device-class, device, service,
+group, logger) - nenhuma e rota de ticket.
+Zero ocorrencias de "vendors", "clients" ou "idInstance" em todo o portal.
+
+O que NOSSO codigo implementa (ExatiTalqClient, "Tier 1"):
+   POST   /vendors/talq/clients/{idInstance}/tickets     (idInstance=69)
+   DELETE /vendors/talq/clients/{idInstance}/tickets     <- DELETE com corpo
+   erros no formato error_code (INVALID_PARAMETERS, ENTITY_NOT_FOUND...)
+
+   >> Esse contrato NAO esta documentado em lugar nenhum do portal atual.
+      Veio de fonte que nao existe mais.
+   >> Falta a operacao de CONSULTA - citada pela EXATI, nao implementada por
+      nos, sem rota conhecida.
+   >> ANTES de perguntar: confirmar se Solicitacoes continua no escopo, ja que
+      e do staging, que a EXATI mandou ignorar.
+
+RESIDUOS DEIXADOS NO CERTIFIER (nao consigo apagar - DELETE da 404)
+-------------------------------------------------------------------
+   ZZTesteUnitInvalida, ZZTesteCelcius, ZZTesteCelsius   (teste do enum unit)
+   ZZTesteCommands                                        (teste de states/levels)
+
+FORMULARIO DE PRODUTO - estado em 13/08
+----------------------------------------
+https://claude.ai/code/artifact/899e6736-4506-49dd-bd43-350848c5e16a
+Evolucao: estrutura aninhada espelhando o JSON do protocolo; obrigatorios
+marcados/travados/expandidos; enums reais em chips por atributo (10 atributos
+tem lista fechada); referencia de rota por secao; descricoes completas com
+escopo, tipo, unidade, obrigatoriedade, aviso de deprecacao e nota "na
+pratica" em ~20 itens.
+Fonte: scratchpad/form-template.html + funcs.json (regeravel).
+
+
+###############################################################################
+ JA RESOLVIDO - NAO REABRIR
+###############################################################################
+
+R0. ENUM DE "unit" - NAO E VALIDADO  (testado 13/08/2026)
+    Era tratado como duvida para a EXATI por causa das duplicatas no enum
+    oficial (DegreesCelcius E DegreesCelsius, Watt e Watts, dBm e
+    DecibelsMilliWatts) e da contradicao "or specific based on an extension"
+    num enum fechado.
+
+    Teste direto no certifier:
+      POST /device-classes  unit="Furlongs"        -> 201 Created
+      POST /device-classes  unit="DegreesCelcius"  -> 201 Created
+      POST /device-classes  unit="DegreesCelsius"  -> 201 Created
+
+    O campo aceita qualquer string. Nao ha o que perguntar: usamos a grafia
+    correta do enum oficial e seguimos.
+
+    RESSALVA: aceitar no anuncio != passar na certificacao. Reavaliar quando
+    a bateria de testes rodar.
+
+    LICAO DE METODO: a duvida era testavel e foi tratada como pergunta de
+    reuniao. Antes de escalar item para a EXATI, verificar se um request
+    resolve.
+
+    EFEITO COLATERAL: as tres classes de teste (ZZTesteUnitInvalida,
+    ZZTesteCelcius, ZZTesteCelsius) FICARAM no certifier - o
+    DELETE /device-classes/{className} responde 404 la. Se aparecerem no
+    dashboard ou numa bateria, sao residuo deste teste.
+
+
+Itens que eram duvida ate 11/08/2026 e foram fechados por teste direto.
+Se voltarem a pauta, e retrabalho.
+
+R1. QUAL AMBIENTE USAR
+    Resolvido: iotcertifier. A EXATI orientou ignorar o staging.
+    O staging (iot.exati.com.br/staging) usa X-API-Key + um "custom
+    client/vendor header" cujo nome nunca descobrimos - irrelevante agora.
+
+R2. FORMA DA ROTA NO CERTIFIER
+    Resolvido: /cms/<token>/<recurso>, SEM o prefixo /talq.
+    O /talq e particularidade do staging.
+
+R3. clientAddress E OBRIGATORIO?
+    Resolvido na pratica: o certifier segue o OAS oficial, nao o
+    "required: false" do portal. Enviado nos passos 2 e 3 (funcionou),
+    omitido no passo 1 conforme a spec (funcionou).
+
+R4. NIL UUID NO PRIMEIRO POST /devices
+    Resolvido: funciona exatamente como a secao 5.1 (p.40) descreve.
+    Enviamos 00000000-0000-0000-0000-000000000000 e o CMS devolveu o
+    gatewayAddress real.
+
+R5. ORDEM DAS ROTAS DO BOOTSTRAP
+    Resolvida e validada na pratica. A ordem do menu do portal esta
+    INVERTIDA; a real e a que executamos.
+    Observacao: o class "NansenGatewayClass" foi ACEITO no passo 1 ANTES de
+    a classe ser anunciada no passo 2. O certifier nao exige a ordem inversa.
+
+R6. MODELO DE CERTIFICADOS - O ACHADO MAIS IMPORTANTE
+    Sao DUAS camadas independentes:
+
+      Load balancer (confianca)  -> a CA          -> Certificados CA do Vendor
+      Aplicacao (pinning)        -> o cert FOLHA  -> Certificados de Produto
+
+    Registrar so a CA NAO basta. O gw.crt precisa estar cadastrado no produto.
+    A secao de Vendor tem coluna SINCRONIZADO (push assincrono para o LB, leva
+    minutos); a de Produto nao tem (consulta direta, vale imediatamente).
+
+    CONSEQUENCIA: cada gateway novo e cada renovacao exigem cadastro manual no
+    dashboard. A vantagem usual de registrar uma CA ("emite quantos quiser sem
+    voltar la") NAO vale aqui. Confirmar com a EXATI se e assim tambem no
+    ambiente definitivo - numa frota real seria inviavel.
+
+R7. FERRAMENTA DE TESTE
+    curl do Git Bash (8.18.0) e curl nativo do Windows (8.19.0) sao ambos
+    Schannel e NAO fazem mTLS com arquivo PEM (exit 58 / HTTP 000).
+    Converter para PKCS#12 nao resolve. Usar openssl s_client.
+    Isso e limitacao da ferramenta, nao do gateway - Java/Python/Node usam
+    stacks TLS proprios e nao sofrem disso.
+
+R8. AMBIENTE OPENSSL NO GIT BASH (Windows)
+    Dois ajustes obrigatorios, senao nada funciona:
+      export OPENSSL_CONF="$(cygpath -w /usr/ssl/openssl.cnf)"
+      export MSYS_NO_PATHCONV=1
+    E usar ARQUIVO de extensoes, nunca process substitution <(...).
+
+R9. LIVENESS NO TALQ
+    Nao existe sonda dedicada (sem /health, /ping, heartbeat).
+    Existe SIM um contrato de timeout/retry como atributos da GatewayFunction:
+    gatewayRetryPeriod, cmsRetryPeriod, gatewayNumberOfRetries,
+    cmsNumberOfRetries (ambos default 3).
+    Armadilha: o deprecado retryPeriod e mandatory-gw=true, enquanto o
+    substituto gatewayRetryPeriod e opcional em todos os perfis.
+
+R10. TIMESTAMP EM ATRIBUTOS
+    Confirmado na pratica: o certifier devolve atributos como
+      {"type":"AttributeString","timestamp":"...","value":"..."}
+    Coerente com a secao 5.7 (p.56-57): embora o OAS marque timestamp como
+    nao obrigatorio, ele e EXIGIDO para certificacao.
+
+
+###############################################################################
+ ARQUIVOS RELACIONADOS (mesma pasta)
+###############################################################################
+
+  duvidas-integracao-talq-exati.md   as 6 duvidas de schema respondidas
+  mtls-certificados-e-callbacks.md   comandos openssl, telas de certificado,
+                                     rotas de callback, diagnostico do mTLS
+  callbacks-cn-e-glossario.txt       CN vs SAN, liveness, 44 rotas, ODN
+  perguntas-para-exati.txt           lista consolidada (PARCIALMENTE OBSOLETA -
+                                     os bloqueadores A1/A2/A3 dela foram
+                                     resolvidos; ver secao JA RESOLVIDO)
+  TALQ-non-obvious-points.md         97 armadilhas da spec
+
+===============================================================================

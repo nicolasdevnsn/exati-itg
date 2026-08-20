@@ -1,0 +1,24 @@
+[
+  {
+    "name": "NansenGatewayClass",
+    "functions": [
+      {
+        "functionId": "gateway-function-01",
+        "type": "GatewayFunction",
+        "attributes": [
+          { "name": "cmsUri" },
+          { "name": "cmsAddress" },
+          { "name": "gatewayUri" },
+          { "name": "gatewayAddress" },
+          { "name": "vendor" },
+          { "name": "crlUrn" },
+          { "name": "retryPeriod" },
+          { "name": "gatewayRetryPeriod" },
+          { "name": "cmsRetryPeriod" },
+          { "name": "gatewayNumberOfRetries" },
+          { "name": "cmsNumberOfRetries" }
+        ]
+      }
+    ]
+  }
+]

@@ -1,0 +1,61 @@
+# Gradle
+.gradle/
+build/
+out/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Java
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+hs_err_pid*
+
+# IDE — IntelliJ
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# IDE — Eclipse / STS
+.classpath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# IDE — VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Env / secrets
+.env
+.env.*
+*.local.yml
+
+# Spring Boot
+HELP.md
+
+# Private key material — NEVER commit (homolog/certs holds the CA and gateway
+# leaf keys; the .crt files may be shared, the keys must not leave this machine)
+*.key
+*.csr
+*.srl
+*.p12
+*.pfx
+*.jks
+
+# Office/OneDrive artifacts
+~$*
+desktop.ini

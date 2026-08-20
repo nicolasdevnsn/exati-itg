@@ -1,0 +1,244 @@
+===============================================================================
+ INTEGRACAO TALQ - NANSEN x EXATI
+ Lista consolidada de duvidas e pendencias
+===============================================================================
+ Texto puro, pronto para colar em e-mail ou chamado.
+ Base: portal docs.iothub.exati.com, spec TALQ 2.6.3 + os 3 arquivos OpenAPI
+ oficiais, e testes executados contra os ambientes staging e iotcertifier.
+
+ Nota de precedencia: a capa da spec TALQ e a secao 3.4 (p.19) determinam que
+ os tres arquivos OpenAPI oficiais PREVALECEM sobre o PDF. Onde o portal da
+ EXATI diverge do OAS oficial, precisamos saber se e extensao intencional ou
+ erro de importacao.
+
+
+###############################################################################
+ A. BLOQUEADORES - nada avanca enquanto nao forem resolvidos
+###############################################################################
+
+A1. CA REGISTRADA NO DASHBOARD, MAS O LOAD BALANCER CONTINUA REJEITANDO
+-----------------------------------------------------------------------
+Cadastramos nossa CA no dashboard do iotcertifier, tanto em "Certificados de
+Produto" (#13 Gateway Teste) quanto em "Certificados CA do Vendor". Os dois
+cadastros persistem na tela apos refresh.
+
+Mesmo assim, o certificado do gateway assinado por essa CA continua sendo
+rejeitado na porta 8443:
+
+  {"detail":"Client certificate rejected by the load balancer:
+   client_cert_validation_failed. Subject: unknown, Issuer: unknown.
+   Verify that your CA certificate has been registered with the platform admin."}
+
+Ja verificamos e descartamos do nosso lado:
+  - o certificado E transmitido no handshake (o servidor envia
+    CertificateRequest e o cliente responde com Certificate + CertificateVerify)
+  - o certificado e valido e encadeia corretamente na CA (openssl verify: OK)
+  - enviar a cadeia completa (-cert_chain) nao altera o resultado
+  - aguardar propagacao nao altera o resultado
+  - registrar em ambos os escopos nao altera o resultado
+
+  >> A mensagem menciona "platform admin". EXISTE UMA ETAPA MANUAL DE VOCES
+     PARA INSERIR A CA NO TRUST STORE DO BALANCEADOR? Qual o procedimento e o
+     prazo?
+
+  CA:      CN=Nansen TALQ Gateway CA v2
+  SHA-256: 21:C1:C3:64:15:48:41:92:CD:0E:E8:38:F5:42:63:AB:54:D1:B3:68:
+           EF:48:4F:5E:B3:A7:17:68:12:A2:CE:49
+
+
+A2. NOME DO "CUSTOM CLIENT/VENDOR HEADER" NO AMBIENTE STAGING
+--------------------------------------------------------------
+Com a API key enviada por voces, no header X-API-Key, a autenticacao passa
+(sai de 401 para 400). Mas todas as rotas retornam:
+
+  GET https://iot.exati.com.br/staging/talq/devices?clientAddress=<uuid>
+  HTTP 400
+  [{"key":"parameterMissing",
+    "description":"Custom client/vendor header is missing","references":[]}]
+
+Mesmo erro em /talq/groups e /talq/devices/count.
+
+A pagina "API TALQ - Autenticacao e Protecao de Rotas" do portal cita essa
+mensagem de erro, mas nao informa o nome do header. Testamos 12 candidatos
+plausiveis (X-Client-Id, X-Vendor, X-Gateway-Id, X-Tenant-Id, entre outros),
+todos sem sucesso.
+
+  >> QUAL O NOME EXATO DESSE HEADER E QUE VALOR ELE ESPERA?
+
+  >> A mesma pagina remete a um arquivo openapi.json. ONDE ELE ESTA?
+     Tentamos /staging/openapi.json, /staging/v3/api-docs, /staging/swagger.json
+     e mais quatro caminhos usuais - todos 404.
+
+
+A3. CONTRA QUAL AMBIENTE DEVEMOS HOMOLOGAR
+-------------------------------------------
+Existem dois enderecos com modelos de autenticacao incompativeis:
+
+                     iot.exati.com.br/staging   iotcertifier.exati.com.br:8443
+  Porta              443                        8443
+  Prefixo            /staging/talq/<recurso>    /cms/<token>/<recurso>
+  Autenticacao       X-API-Key + header custom  token no path + mTLS
+  Cert. do servidor  *.exati.com.br, CA         autoassinado por
+                     publica, valido            "Vendor Certifier CA",
+                                                sem cadeia
+
+  >> Sao ambientes do mesmo sistema ou sistemas diferentes?
+  >> O iotcertifier e harness de certificacao TALQ ou o CMS de producao?
+  >> Se for producao, por que certificado autoassinado, sendo que voces tem
+     wildcard valido?
+  >> O comportamento funcional e identico? Passar no staging garante passar
+     no certifier?
+  >> O certifier nao aparece em NENHUMA pagina do portal. Existe material
+     sobre ele em outro lugar?
+
+
+###############################################################################
+ B. CERTIFICADOS - modelo e regras (nada disso esta documentado)
+###############################################################################
+
+B1. Qual a diferenca entre "Certificados CA do Vendor" e "Certificados de
+    Produto"? Um e escopo global do fornecedor e o outro por produto?
+    O certificado que o gateway apresenta precisa encadear na CA DO PRODUTO
+    da sessao, ou uma CA de vendor cobre todos os produtos?
+
+B2. O campo de produto espera CADEIA completa (o placeholder diz "TALQ CA
+    Chain") ou um unico certificado de CA? Se cadeia, em que ordem?
+
+B3. O que e o "Generic Product Certificate" que ja vem cadastrado?
+    A chave privada dele nao e baixavel (botao desabilitado), o que o torna
+    inutil para mTLS. Ela pode ser disponibilizada? Seria o caminho para
+    comecarmos a testar sem depender da aprovacao do item A1.
+
+B4. Regras de emissao que precisamos respeitar:
+    - ha restricao de algoritmo/tamanho de chave? Aceitam EC P-256 ou so RSA?
+    - o CN/SAN do leaf precisa casar com algo especifico (hostname do
+      gatewayUri, identificador de gateway registrado)?
+    - aceitam cadeia com intermediaria, ou o leaf tem que ser assinado direto
+      pela CA registrada?
+    - ha validade maxima exigida?
+
+B5. Qual o certificado ou CA DO SERVIDOR de voces para o nosso truststore?
+    O do certifier e autoassinado (O=Exati, CN=Vendor Certifier CA) e e
+    enviado sem cadeia, entao nao valida em truststore padrao.
+
+B6. Qual o procedimento de renovacao e de revogacao das CAs cadastradas?
+
+
+###############################################################################
+ C. CONTRATO DE API - divergencias entre o portal e o OAS oficial
+###############################################################################
+
+C1. clientAddress e obrigatorio?
+    OAS gateway oficial: required em 87 de 87 operacoes
+    OAS CMS oficial:     required em 56 de 56 operacoes
+    Portal EXATI:        required: false
+    Spec secao 3.3 (p.17): obrigatorio em toda requisicao.
+    >> O IoT Hub aceita requisicao sem ele? E tolerancia deliberada ou
+       marcacao errada no portal?
+
+C2. commands.states e commands.levels aparecem como "type: object" VAZIO no
+    portal - nao e implementavel a partir dele. A estrutura real esta no
+    CommandsDesc do data-model oficial (states = array de State com
+    discriminator em "name", 13 tipos; levels = faixas {start,end} de
+    DimLevel inteiro 0-100).
+    >> O portal sera corrigido? Enquanto isso, validamos contra o data-model
+       oficial e assumimos que o IoT Hub segue?
+
+C3. [RESOLVIDO POR TESTE em 13/08/2026 - NAO PERGUNTAR]
+    O campo "unit" nao tem enum no portal; o OAS oficial traz enum fechado de
+    56 valores, com duplicatas (DegreesCelcius E DegreesCelsius, Watt e Watts,
+    dBm e DecibelsMilliWatts).
+
+    TESTADO contra o certifier: o enum NAO E VALIDADO.
+      POST /device-classes com unit="Furlongs" (inventada) -> 201 Created
+      idem com "DegreesCelcius" e "DegreesCelsius"          -> 201 Created
+
+    Conclusao: na pratica e string livre. A duvida das duplicatas nao bloqueia
+    nada - usamos a grafia correta do enum oficial e seguimos.
+
+    RESSALVA: aceitar no anuncio nao e o mesmo que passar na bateria de
+    certificacao. Se a bateria verificar conformidade de unidade, o
+    comportamento pode ser outro. Reavaliar quando rodarmos os testes.
+
+C4. TypeDesc: o portal chama o campo de "name", o data-model oficial chama de
+    "type" (enum LampType, LuminaireType, DriverType, ControllerType,
+    BracketType nos dois). Qual vale?
+
+C5. Rotas que retornam 404 e precisamos entender:
+    - staging: /talq/services, /talq/log-reports, /talq/calendars respondem
+      404 com corpo de framework ("Cannot GET ..."), nao erro TALQ.
+      /talq/device-classes tambem 404 em GET.
+    - certifier: GET /devices, /device-classes e /services respondem
+      404 {"detail":"Unknown resource type"}, enquanto /groups responde 403.
+    >> Essas rotas existem nesses ambientes? Aceitam apenas POST?
+
+
+###############################################################################
+ D. COMPORTAMENTO E SEMANTICA
+###############################################################################
+
+D1. NIL UUID no primeiro POST /devices
+    Spec secao 5.1 (p.40): o primeiro POST deve usar
+    00000000-0000-0000-0000-000000000000, e qualquer outro UUID DEVE ser
+    rejeitado. Secao 5.3 (p.47): NIL + duplicata retorna o existente;
+    UUID real + duplicata retorna 409.
+    >> O IoT Hub implementa as duas regras?
+
+D2. LampType esta deprecado (secao 4.5, p.38-39), dividido em LuminaireType,
+    BracketType, DriverType e ControllerType. Ambos ainda funcionam na spec.
+    >> Qual o IoT Hub espera receber?
+
+D3. O certifier faz alguma SONDA DE ALCANCABILIDADE no gatewayUri antes ou
+    durante o bootstrap? O TALQ nao define health check (nao ha /health,
+    /ping, heartbeat), entao se existir e comportamento proprio de voces.
+
+D4. Qual o timeout e a politica de retry do CMS nas chamadas ao nosso gateway?
+    Obs: a spec preve isso como atributos anunciados da GatewayFunction
+    (cmsRetryPeriod, cmsNumberOfRetries, default 3). Voces expoem esses
+    valores? Se sim, lemos direto do protocolo.
+
+D5. Forma da rota no certifier: confirmamos que o recurso vai direto na base,
+    sem o prefixo /talq (que e do staging). Correto?
+
+
+###############################################################################
+ E. CORRECOES DE DOCUMENTACAO
+###############################################################################
+
+E1. O iotcertifier nao esta documentado em lugar nenhum - nem o endereco, nem
+    o mTLS, nem a porta 8443, nem o fluxo de cadastro de CA.
+
+E2. commands.states / commands.levels vazios no portal (ver C2).
+
+E3. Campo "unit" sem enum no portal (ver C3).
+
+E4. Paginas de endpoint DUPLICADAS: o sitemap mostra duas series completas de
+    IDs (143205xx-143206xx e 214141xx) para as mesmas 14 paginas de
+    device-class/device, mais duplicata em groups. Comparamos dois pares e sao
+    equivalentes. Sugere import duplicado de spec OpenAPI, possivelmente uma
+    desatualizada - o que explicaria E2 e E3.
+
+E5. A ordem do menu lateral do Bootstrap esta invertida em relacao a ordem
+    real de execucao (o menu comeca por "classes discovery" e termina em
+    "gateway announcement"; a execucao e o inverso).
+
+E6. As 6 subpaginas do Bootstrap sao apenas paginas de endpoint com a tag
+    "Docs TALQ/Tier 2/Bootstrap process" - nenhuma descreve pre-requisito,
+    ordem ou etapa anterior/seguinte. A sequencia so existe na pagina-mae.
+
+E7. Um padrao geral: TODA exigencia de autenticacao que encontramos ate agora
+    (o X-API-Key, o custom client/vendor header, o certificado de cliente na
+    8443) foi descoberta lendo corpo de erro HTTP, nao documentacao.
+
+
+###############################################################################
+ PRIORIZACAO SUGERIDA PARA A REUNIAO
+###############################################################################
+
+ 1. A1 e A2 primeiro. Sao os dois bloqueios reais e provavelmente se resolvem
+    com a pessoa certa de infra em poucos minutos. Se a pauta comecar pelas
+    divergencias de schema, corre risco de o tempo acabar antes de chegar
+    neles.
+ 2. A3 em seguida - a resposta muda onde investimos esforco.
+ 3. B, C e D podem ir por escrito.
+ 4. E e qualidade de documentacao; vale registrar mas nao ocupa reuniao.

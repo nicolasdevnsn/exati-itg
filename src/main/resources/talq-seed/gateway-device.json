@@ -1,0 +1,22 @@
+{
+  "address": "${gatewayAddress}",
+  "name": "Nansen TALQ Gateway - Iluminacao Publica (homolog)",
+  "class": "NansenGatewayClass",
+  "functions": [
+    {
+      "id": "gateway-function-01",
+      "type": "GatewayFunction",
+      "gatewayAddress": { "type": "AttributeString", "value": "${gatewayAddress}" },
+      "cmsAddress": { "type": "AttributeString", "value": "${cmsAddress}" },
+      "cmsUri": { "type": "AttributeUri", "value": "${cmsUri}" },
+      "gatewayUri": { "type": "AttributeUri", "value": "${gatewayUri}" },
+      "vendor": { "type": "AttributeString", "value": "${vendor}" },
+      "crlUrn": { "type": "AttributeUri", "value": "${crlUrn}" },
+      "retryPeriod": { "type": "AttributeFloat", "value": 60 },
+      "gatewayRetryPeriod": { "type": "AttributeFloat", "value": 60 },
+      "cmsRetryPeriod": { "type": "AttributeFloat", "value": 60 },
+      "gatewayNumberOfRetries": { "type": "AttributeInteger", "value": 3 },
+      "cmsNumberOfRetries": { "type": "AttributeInteger", "value": 3 }
+    }
+  ]
+}

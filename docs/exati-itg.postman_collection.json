@@ -1,0 +1,526 @@
+{
+  "info": {
+    "name": "Exati ITG API",
+    "description": "# Exati ITG REST API\n\nReady-to-use Postman collection for the Spring Boot 3 API.\n\n## How to use\n\n1. Import this collection into Postman (File → Import).\n2. The collection ships with these variables — adjust if needed:\n   - `baseUrl` — defaults to `http://localhost:8080`\n   - `username` — defaults to `alice`\n   - `password` — defaults to `password-strong-1`\n   - `accessToken` — populated automatically by **Register** or **Login**\n3. Boot the API locally:\n   ```powershell\n   .\\gradlew.bat bootRun\n   ```\n4. Run requests in this order the first time:\n   - **Auth → Register**  (creates the user and stores `accessToken`)\n   - **Protected → Ping** (uses the stored token)\n\n## Authentication model\n\n- **Mechanism:** JWT Bearer token (HS256), validity 60 minutes.\n- **Header:** `Authorization: Bearer <accessToken>` on every protected route.\n- **Open routes:** `/api/v1/auth/**`, `/actuator/health|info|prometheus`, `/v3/api-docs/**`, `/swagger-ui/**`, `/h2-console/**`.\n- **Protected:** everything else under `/api/v1/**`.\n\n## Error model (RFC 7807)\n\nAll failures (auth + business) return `application/problem+json`:\n\n```json\n{\n  \"type\":   \"about:blank\",\n  \"title\":  \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication required.\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}\n```\n\n## Rules\n\n- Username: 3–64 chars, must be unique (409 on conflict).\n- Password: 8–128 chars (400 on validation failure).\n- Tokens are **stateless** — there is no logout endpoint; let them expire.\n- Passwords are stored as **BCrypt** hashes; never logged.\n- Schema is managed by **Flyway** — Hibernate `ddl-auto: none`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl",     "value": "http://localhost:8080", "type": "string" },
+    { "key": "username",    "value": "alice",                  "type": "string" },
+    { "key": "password",    "value": "password-strong-1",      "type": "string" },
+    { "key": "accessToken", "value": "",                       "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Open endpoints — no Bearer token required. **Register** and **Login** both populate the `accessToken` collection variable on success, so subsequent protected requests work without manual copy-paste.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "description": "Create a new user account.\n\n**Status codes**\n- `201 Created` — user created, response body has `accessToken`\n- `400 Bad Request` — validation failure (username < 3 chars, password < 8 chars, missing fields)\n- `409 Conflict` — username already exists\n\n**Test script** stores `accessToken` into the collection variable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('accessToken returned', () => pm.expect(body.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "console.log('Saved accessToken (expires ' + body.expiresAt + ')');"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"username\": \"alice\",\n  \"password\": \"password-strong-1\"\n}" },
+                "url": { "raw": "{{baseUrl}}/api/v1/auth/register" }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"tokenType\": \"Bearer\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSIsImlhdCI6MTcxOTc0NDAwMCwiZXhwIjoxNzE5NzQ3NjAwfQ.signature\",\n  \"expiresAt\": \"2026-06-30T14:00:00Z\",\n  \"username\": \"alice\"\n}"
+            },
+            {
+              "name": "409 Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"Username already taken: alice\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
+            },
+            {
+              "name": "400 Bad Request",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"password: size must be between 8 and 128\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "description": "Authenticate with username + password and obtain a fresh JWT. Issued tokens remain valid until they expire — there is no server-side revocation.\n\n**Status codes**\n- `200 OK` — token in response body\n- `401 Unauthorized` — bad credentials or unknown user\n- `400 Bad Request` — missing fields\n\n**Test script** stores `accessToken` into the collection variable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('accessToken returned', () => pm.expect(body.accessToken).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "console.log('Saved accessToken (expires ' + body.expiresAt + ')');"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"tokenType\": \"Bearer\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSIsImlhdCI6MTcxOTc0NDAwMCwiZXhwIjoxNzE5NzQ3NjAwfQ.signature\",\n  \"expiresAt\": \"2026-06-30T14:00:00Z\",\n  \"username\": \"alice\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Invalid credentials.\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Protected",
+      "description": "Endpoints that require `Authorization: Bearer {{accessToken}}`. The token is set automatically when you run **Auth → Register** or **Auth → Login**.",
+      "item": [
+        {
+          "name": "Ping",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/ping",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "ping"]
+            },
+            "description": "Sample protected endpoint. Returns `pong` plus the current server timestamp.\n\n**Status codes**\n- `200 OK` — body: `{ \"message\": \"pong\", \"timestamp\": \"...\" }`\n- `401 Unauthorized` — token missing, invalid, or expired"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"message is 'pong'\", () => pm.expect(pm.response.json().message).to.eql('pong'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"message\": \"pong\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication required.\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Solicitações",
+      "description": "Tier 1 tickets (demandas). `POST /api/v1/solicitacoes` is a JWT-protected edge that forwards to the Exati IoT Hub `POST /vendors/talq/clients/{idInstance}/tickets`. Requires `Authorization: Bearer {{accessToken}}` (run **Auth → Register/Login** first). Outbound Exati credentials are configured on the server via `exati.auth.*`, not sent from Postman.",
+      "item": [
+        {
+          "name": "Create Solicitação",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitacoes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "solicitacoes"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_external_protocol\": 1024,\n  \"service_code\": \"SVC-01\",\n  \"id_worksite\": 42,\n  \"external_protocol\": \"EXT-2026-000123\",\n  \"description\": \"Poste apagado na via principal\",\n  \"justification\": \"Reclamação recorrente do morador\",\n  \"state_abbreviation\": \"MG\",\n  \"municipality\": \"Belo Horizonte\",\n  \"neighborhood\": \"Savassi\",\n  \"address\": \"Rua Pernambuco\",\n  \"address_number\": 1000,\n  \"zip_code\": \"30130-151\",\n  \"latitude\": \"-19.9386\",\n  \"longitude\": \"-43.9377\",\n  \"reference_point\": \"Em frente à praça\",\n  \"reporter\": \"Maria Silva\",\n  \"reporter_phone\": \"31 99999-0000\",\n  \"reporter_birth_date\": \"15/03/1985\",\n  \"age_majority_checkbox\": 1\n}"
+            },
+            "description": "Create a solicitação (ticket) on the Exati IoT Hub.\n\n**Required fields**\n- `id_external_protocol` (number ≥ 1)\n- `service_code` (string)\n- `id_worksite` (number ≥ 1)\n\nAll other fields are optional. Validation runs before any outbound call, so bad input fails fast as a local 400.\n\n**Status codes**\n- `201 Created` — body has `id_demanda`, `operacao`, `data_recebido`, `status`\n- `400 Bad Request` — local bean validation failure, or Exati `INVALID_PARAMETERS`\n- `401 Unauthorized` — JWT missing/invalid/expired\n- `403 Forbidden` — Exati `CLIENT_IDENTIFICATION_MISSING`\n- `404 Not Found` — Exati `ENTITY_NOT_FOUND`\n- `409 Conflict` — Exati `RESOURCE_CONFLICT`\n- `422 Unprocessable Entity` — other Exati 4xx\n- `502 Bad Gateway` — Exati unreachable or returned 5xx"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('id_demanda returned', () => pm.expect(body.id_demanda).to.be.a('number'));",
+                  "pm.test(\"operacao is 'cria'\", () => pm.expect(body.operacao).to.eql('cria'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"id_external_protocol\": 1024,\n  \"service_code\": \"SVC-01\",\n  \"id_worksite\": 42\n}" },
+                "url": { "raw": "{{baseUrl}}/api/v1/solicitacoes" }
+              },
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id_demanda\": 987654,\n  \"operacao\": \"cria\",\n  \"data_recebido\": \"2026-07-01T13:00:00Z\",\n  \"status\": \"ok\"\n}"
+            },
+            {
+              "name": "400 Bad Request (validation)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": { "mode": "raw", "raw": "{\n  \"id_external_protocol\": 1,\n  \"service_code\": \"SVC-01\"\n}" },
+                "url": { "raw": "{{baseUrl}}/api/v1/solicitacoes" }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"idWorksite: must not be null\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication required.\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
+            },
+            {
+              "name": "422 Unprocessable Entity (Exati error)",
+              "status": "Unprocessable Entity",
+              "code": 422,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unprocessable Entity\",\n  \"status\": 422,\n  \"detail\": \"service_code is unknown\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
+            },
+            {
+              "name": "502 Bad Gateway (Exati unreachable)",
+              "status": "Bad Gateway",
+              "code": 502,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Gateway\",\n  \"status\": 502,\n  \"detail\": \"Exati IoT Hub is unreachable.\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Cancel Solicitação",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitacoes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "solicitacoes"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id_external_protocol\": 1024,\n  \"cod_external_ticket_origin\": \"APP\",\n  \"justification\": \"Solicitação duplicada\"\n}"
+            },
+            "description": "Cancel a solicitação (operacao `cancela`). Forwards to Exati `DELETE /vendors/talq/clients/{idInstance}/tickets` — a DELETE **with a body**.\n\n**Required**\n- `id_external_protocol` (number ≥ 1)\n\n**Optional**\n- `cod_external_ticket_origin` (string, ≤ 4)\n- `justification` (string, ≤ 200)\n\n**Status codes**\n- `200 OK` — body has `id_demanda`, `operacao` (`cancela`), `data_recebido`, `status`\n- `400` / `403` / `404` / `409` — mapped from Exati `error_code`\n- `401 Unauthorized` — JWT missing/invalid\n- `502 Bad Gateway` — Exati unreachable / 5xx"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test(\"operacao is 'cancela'\", () => pm.expect(pm.response.json().operacao).to.eql('cancela'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"id_demanda\": 987654,\n  \"operacao\": \"cancela\",\n  \"data_recebido\": \"2026-07-02T13:00:00Z\",\n  \"status\": \"ok\"\n}"
+            },
+            {
+              "name": "404 Not Found (Exati ENTITY_NOT_FOUND)",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"No ticket for id_external_protocol 1024\",\n  \"timestamp\": \"2026-07-02T13:00:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "TALQ (Tier 2)",
+      "description": "TALQ Tier 2 resource endpoints. JWT-protected edges that forward to the Exati IoT Hub `/talq/*` API. Payloads are **arrays**. Tier 2 errors come back from Exati as an array of `TalqErrorMessage` (`key`/`description`), which this API maps to RFC 7807 problem responses.",
+      "item": [
+        {
+          "name": "Create Device Class",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/talq/device-classes",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "talq", "device-classes"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"name\": \"StreetLightController\",\n    \"functions\": [\n      { \"functionId\": \"basic001\", \"type\": \"BasicFunction\" },\n      {\n        \"functionId\": \"lampActuator001\",\n        \"type\": \"LampActuatorFunction\",\n        \"attributes\": [\n          { \"name\": \"level\", \"minValue\": 0, \"maxValue\": 100, \"unit\": \"%\" }\n        ]\n      }\n    ]\n  }\n]"
+            },
+            "description": "Announce one or more TALQ device classes → Exati `POST /talq/device-classes`.\n\n**Body:** array of device classes. Each requires `name` (≤ 50) and a non-empty `functions` array; each function requires `functionId` (≤ 50) and `type`.\n\n**Status codes**\n- `201 Created` — echoes the created classes\n- `400` — local validation, or Exati `payloadError` / `parameterMissing`\n- `401 Unauthorized`\n- `404` / `409` / `422` — mapped from Exati TALQ error keys\n- `502 Bad Gateway` — Exati unreachable / 5xx"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('array returned', () => pm.expect(pm.response.json()).to.be.an('array').and.have.length.above(0));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"name\": \"StreetLightController\",\n    \"functions\": [\n      { \"functionId\": \"basic001\", \"type\": \"BasicFunction\" }\n    ]\n  }\n]"
+            },
+            {
+              "name": "400 Bad Request (Exati payloadError)",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"payloadError: functions must not be empty\",\n  \"timestamp\": \"2026-07-02T13:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Device",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/talq/devices",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "talq", "devices"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"address\": \"00000000-0000-0000-0000-000000000001\",\n    \"name\": \"Lamp-Savassi-001\",\n    \"class\": \"StreetLightController\",\n    \"functions\": [\n      { \"id\": \"lampActuator001\", \"type\": \"LampActuatorFunction\" }\n    ]\n  }\n]"
+            },
+            "description": "Create one or more TALQ devices → Exati `POST /talq/devices`.\n\n**Body:** array of devices. Each requires `address`, `name` (≤ 50), and `class` (the device-class name). `functions[].id` must match a `functionId` on that class.\n\n**Status codes**\n- `201 Created` — echoes the created devices\n- `400` — local validation, or Exati `payloadError`\n- `401 Unauthorized`\n- `404` — Exati `relatedResourceNotFound` (unknown class)\n- `409` — Exati `resourceConflict` (device already exists)\n- `502 Bad Gateway` — Exati unreachable / 5xx"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "[\n  {\n    \"address\": \"00000000-0000-0000-0000-000000000001\",\n    \"name\": \"Lamp-Savassi-001\",\n    \"class\": \"StreetLightController\",\n    \"functions\": [\n      { \"id\": \"lampActuator001\", \"type\": \"LampActuatorFunction\" }\n    ]\n  }\n]"
+            },
+            {
+              "name": "409 Conflict (Exati resourceConflict)",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"resourceConflict: device already exists\",\n  \"timestamp\": \"2026-07-02T13:00:00Z\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ops",
+      "description": "Spring Boot Actuator endpoints. `health`, `info`, and `prometheus` are open; `metrics` requires a Bearer token (default rule: every non-allowlisted route is protected).",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Liveness/readiness check. Open to anonymous callers."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/vnd.spring-boot.actuator.v3+json" }],
+              "body": "{\n  \"status\": \"UP\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Info",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/actuator/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "info"]
+            },
+            "description": "Build / git metadata for the running JAR. Open."
+          },
+          "response": []
+        },
+        {
+          "name": "Prometheus",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/actuator/prometheus",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "prometheus"]
+            },
+            "description": "Metrics in Prometheus exposition format (text/plain). Open so a scraper can poll without credentials."
+          },
+          "response": []
+        },
+        {
+          "name": "Metrics (protected)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "metrics"]
+            },
+            "description": "Lists all Micrometer metric names. Protected — requires a Bearer token."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Docs",
+      "description": "API documentation endpoints — open to anonymous callers.",
+      "item": [
+        {
+          "name": "OpenAPI 3 JSON",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v3/api-docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["v3", "api-docs"]
+            },
+            "description": "Auto-generated OpenAPI 3 spec for this API. Useful for re-importing into Postman as the source of truth, or feeding to a client generator."
+          },
+          "response": []
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui.html",
+              "host": ["{{baseUrl}}"],
+              "path": ["swagger-ui.html"]
+            },
+            "description": "Interactive Swagger UI. Open in a browser, click **Authorize**, paste the JWT to call protected endpoints."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

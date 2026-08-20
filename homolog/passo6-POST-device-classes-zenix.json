@@ -1,0 +1,45 @@
+[
+  {
+    "name": "NansenZenixClass",
+    "functions": [
+      {
+        "functionId": "basic-01",
+        "type": "BasicFunction",
+        "attributes": [
+          { "name": "swVersion" },
+          { "name": "deviceReset" },
+          { "name": "currentTime" }
+        ]
+      },
+      {
+        "functionId": "comm-01",
+        "type": "CommunicationFunction",
+        "attributes": [
+          { "name": "physicalAddress" },
+          { "name": "communicationFailure" },
+          { "name": "communicationType" }
+        ]
+      },
+      {
+        "functionId": "lamp-01",
+        "type": "LampActuatorFunction",
+        "attributes": [
+          { "name": "defaultLightState" },
+          { "name": "targetLightCommand" },
+          { "name": "feedbackLightCommand" },
+          { "name": "actualLightState" },
+          { "name": "calendarID" },
+          { "name": "lightStateChange" }
+        ]
+      },
+      {
+        "functionId": "meter-01",
+        "type": "ElectricalMeterFunction",
+        "attributes": [
+          { "name": "totalPower" },
+          { "name": "totalActiveEnergy" }
+        ]
+      }
+    ]
+  }
+]

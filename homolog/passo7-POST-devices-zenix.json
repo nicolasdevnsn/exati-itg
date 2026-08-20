@@ -1,0 +1,22 @@
+[
+  {
+    "address": "00000000-0000-0000-0000-000000000000",
+    "name": "ZENIX SIP homolog 001",
+    "class": "NansenZenixClass",
+    "functions": [
+      {
+        "id": "basic-01",
+        "type": "BasicFunction",
+        "swVersion": { "type": "AttributeString", "value": "1.0.0-homolog" }
+      },
+      {
+        "id": "lamp-01",
+        "type": "LampActuatorFunction"
+      },
+      {
+        "id": "meter-01",
+        "type": "ElectricalMeterFunction"
+      }
+    ]
+  }
+]

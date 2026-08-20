@@ -1,0 +1,16 @@
+[
+  {
+    "address": "00000000-0000-0000-0000-000000000000",
+    "name": "Nansen TALQ Gateway - Iluminacao Publica (homolog)",
+    "class": "NansenGatewayClass",
+    "functions": [
+      {
+        "id": "gateway-function-01",
+        "type": "GatewayFunction",
+        "vendor": { "type": "AttributeString", "value": "Nansen" },
+        "gatewayUri": { "type": "AttributeUri", "value": "https://olmti-200-169-6-125.free.pinggy.net/" },
+        "cmsUri": { "type": "AttributeUri", "value": "https://iotcertifier.exati.com.br:8443/cms/9yTZDDpe4H13mObY6AkfXnIxBGdOdfXxOqNawjg235Y/" }
+      }
+    ]
+  }
+]
