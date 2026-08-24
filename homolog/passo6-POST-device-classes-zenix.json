@@ -109,6 +109,42 @@
             "name": "temperatureHighThreshold"
           }
         ]
+      },
+      {
+        "functionId": "photo-01",
+        "type": "PhotocellFunction",
+        "attributes": [
+          {
+            "name": "photocellOutput"
+          },
+          {
+            "name": "onLevel"
+          }
+        ]
+      },
+      {
+        "functionId": "loc-01",
+        "type": "LocationSensorFunction",
+        "attributes": [
+          {
+            "name": "locationChanged"
+          },
+          {
+            "name": "locationChangedThreshold"
+          }
+        ]
+      },
+      {
+        "functionId": "orient-01",
+        "type": "OrientationFunction",
+        "attributes": [
+          {
+            "name": "orientationChanged"
+          },
+          {
+            "name": "orientationChangedThreshold"
+          }
+        ]
       }
     ]
   }

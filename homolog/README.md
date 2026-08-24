@@ -157,6 +157,18 @@ Groups: 50 grupos × 500 membros.
   completo (7 funções) → 201 com batt-01 no echo, address
   **f9abf266-8136-4fc3-875c-495912f3b6e9**; /seed upsert verificado. Sem
   mudança de código Java → sem rebuild → gatewayUri preservado.
+- **Correção 24/08 lote (GW_DDRS_016/022/024 + GW_DV_005):** classe cresceu de
+  uma vez com Photocell (photocellOutput M binário ON/OFF + onLevel config que
+  o teste lê), LocationSensor (locationChanged M + locationChangedThreshold
+  config) e Orientation (orientationChanged M + orientationChangedThreshold
+  AttributeOrientation {phi,theta,psi}) → 201; **"ZENIX SIP homolog 005"**
+  nasceu com as 10 funções → 201, address
+  **629e9471-0a57-4797-b883-c15a5fb47445**. GW_DV_005 (PATCH de atributo →
+  409): o certifier manda `{"value": …}` SEM o campo `type`; o DeviceValidator
+  agora adota o tipo declarado quando o wrapper vem sem discriminador
+  (verificado: typeless PATCH → 200 e o valor é gravado tipado; type errado
+  EXPLÍCITO segue 409, GW_BV_009 preservado). Obs.: catálogo passou de Map.of
+  (limite de 10 pares) para Map.ofEntries.
 
 ## Rodada anterior (19/08/2026 — token antigo, superada)
 

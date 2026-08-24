@@ -90,6 +90,17 @@ public class DeviceValidator {
                     + "' must be a typed wrapper object {type, value}");
         }
         var wrapperType = wrapper.path("type").asText();
+        if (wrapperType.isBlank()) {
+            // GW_DV_005: the certifier PATCHes bare {"value": …} without the
+            // discriminator. Adopt the declared type instead of answering 409 —
+            // an EXPLICIT wrong type still conflicts below (GW_BV_009).
+            TalqTypeCatalog.attribute(functionType, attributeName)
+                    .ifPresent(s -> ((ObjectNode) wrapper).put("type", s.wrapperType()));
+            wrapperType = wrapper.path("type").asText();
+            if (wrapperType.isBlank()) {
+                return; // attribute unknown to the catalog and untyped — accept as-is
+            }
+        }
         // Catalog-independent self-consistency: the certifier (GW_BV_009) sends a
         // correct wrapper with a mismatched JSON value (e.g. a number inside an
         // AttributeString) — including on classes IT announced, which our catalog

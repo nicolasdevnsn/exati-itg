@@ -16,8 +16,8 @@ public final class TalqTypeCatalog {
     public record AttrSpec(String wrapperType, boolean percent) {
     }
 
-    private static final Map<String, Map<String, AttrSpec>> FUNCTIONS = Map.of(
-            "GatewayFunction", Map.ofEntries(
+    private static final Map<String, Map<String, AttrSpec>> FUNCTIONS = Map.ofEntries(
+            Map.entry("GatewayFunction", Map.ofEntries(
                     Map.entry("cmsUri", new AttrSpec("AttributeUri", false)),
                     Map.entry("cmsAddress", new AttrSpec("AttributeString", false)),
                     Map.entry("gatewayUri", new AttrSpec("AttributeUri", false)),
@@ -28,36 +28,45 @@ public final class TalqTypeCatalog {
                     Map.entry("gatewayRetryPeriod", new AttrSpec("AttributeFloat", false)),
                     Map.entry("cmsRetryPeriod", new AttrSpec("AttributeFloat", false)),
                     Map.entry("gatewayNumberOfRetries", new AttrSpec("AttributeInteger", false)),
-                    Map.entry("cmsNumberOfRetries", new AttrSpec("AttributeInteger", false))),
-            "CommunicationFunction", Map.of(
+                    Map.entry("cmsNumberOfRetries", new AttrSpec("AttributeInteger", false)))),
+            Map.entry("CommunicationFunction", Map.of(
                     "physicalAddress", new AttrSpec("AttributeString", false),
                     "communicationFailure", new AttrSpec("AttributeBoolean", false),
-                    "communicationType", new AttrSpec("AttributeString", false)),
-            "BasicFunction", Map.of(
+                    "communicationType", new AttrSpec("AttributeString", false))),
+            Map.entry("BasicFunction", Map.of(
                     "swVersion", new AttrSpec("AttributeString", false),
                     "deviceReset", new AttrSpec("AttributeBoolean", false),
-                    "currentTime", new AttrSpec("AttributeDateTime", false)),
-            "LampActuatorFunction", Map.of(
+                    "currentTime", new AttrSpec("AttributeDateTime", false))),
+            Map.entry("LampActuatorFunction", Map.of(
                     "defaultLightState", new AttrSpec("AttributeLevelState", true),
                     "targetLightCommand", new AttrSpec("AttributeCommand", false),
                     "feedbackLightCommand", new AttrSpec("AttributeCommand", false),
                     "actualLightState", new AttrSpec("AttributeLevelState", true),
                     "calendarID", new AttrSpec("AttributeString", false),
-                    "lightStateChange", new AttrSpec("AttributeBoolean", false)),
-            "LampMonitorFunction", Map.of(
+                    "lightStateChange", new AttrSpec("AttributeBoolean", false))),
+            Map.entry("LampMonitorFunction", Map.of(
                     "lampFailure", new AttrSpec("AttributeBoolean", false),
                     "operatingHours", new AttrSpec("AttributeFloat", false),
-                    "switchOnCounter", new AttrSpec("AttributeInteger", false)),
-            "BatteryLevelSensorFunction", Map.of(
+                    "switchOnCounter", new AttrSpec("AttributeInteger", false))),
+            Map.entry("BatteryLevelSensorFunction", Map.of(
                     "batteryLevel", new AttrSpec("AttributeFloat", true),
                     "batteryLevelLowThreshold", new AttrSpec("AttributeFloat", true),
-                    "batteryLevelTooLow", new AttrSpec("AttributeBoolean", false)),
-            "TemperatureSensorFunction", Map.of(
+                    "batteryLevelTooLow", new AttrSpec("AttributeBoolean", false))),
+            Map.entry("TemperatureSensorFunction", Map.of(
                     "temperature", new AttrSpec("AttributeFloat", false),
-                    "temperatureHighThreshold", new AttrSpec("AttributeFloat", false)),
-            "ElectricalMeterFunction", Map.of(
+                    "temperatureHighThreshold", new AttrSpec("AttributeFloat", false))),
+            Map.entry("PhotocellFunction", Map.of(
+                    "photocellOutput", new AttrSpec("AttributeBinary", false),
+                    "onLevel", new AttrSpec("AttributeFloat", false))),
+            Map.entry("LocationSensorFunction", Map.of(
+                    "locationChanged", new AttrSpec("AttributeBoolean", false),
+                    "locationChangedThreshold", new AttrSpec("AttributeFloat", false))),
+            Map.entry("OrientationFunction", Map.of(
+                    "orientationChanged", new AttrSpec("AttributeBoolean", false),
+                    "orientationChangedThreshold", new AttrSpec("AttributeOrientation", false))),
+            Map.entry("ElectricalMeterFunction", Map.of(
                     "totalPower", new AttrSpec("AttributeFloat", false),
-                    "totalActiveEnergy", new AttrSpec("AttributeFloat", false)));
+                    "totalActiveEnergy", new AttrSpec("AttributeFloat", false))));
 
     private TalqTypeCatalog() {
     }
