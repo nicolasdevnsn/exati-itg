@@ -170,6 +170,19 @@ Groups: 50 grupos × 500 membros.
   EXPLÍCITO segue 409, GW_BV_009 preservado). Obs.: catálogo passou de Map.of
   (limite de 10 pares) para Map.ofEntries.
 
+## Contrato de erros do certifier (fechado em 24/08 — TODOS confirmados por teste)
+
+| Situação | Status + key |
+|---|---|
+| Parâmetro obrigatório ausente (clientAddress, talqRequestId) | 400 `parameterMissing` |
+| talqRequestId não-UUID ou UUID NULO | 400 `parameterValueNotValid` |
+| Campo obrigatório ausente no payload (ex.: CalendarRule sem `program`) | 422 `payloadError` |
+| Classe/função inexistente referenciada | 404 `relatedResourceNotFound` |
+| ATRIBUTO não declarado (GW_BV_008) | 404 `resourceNotFound` (a descrição do teste diz relatedResourceNotFound — a asserção é que vale) |
+| Duplicata / tipo explícito errado | 409 `resourceConflict` |
+| PATCH de atributo SEM campo `type` (typeless) | **200 — aceitar sempre**, adotar o tipo declarado; consistência de valor só vale para tipo EXPLÍCITO (GW_BV_009) |
+| PUT /devices em lote | **UPSERT** (cria desconhecidos, GW_DV_006) |
+
 ## Rodada anterior (19/08/2026 — token antigo, superada)
 
 - `gatewayAddress` **0b22d6c4-5357-4053-8d54-700c418315f6**
