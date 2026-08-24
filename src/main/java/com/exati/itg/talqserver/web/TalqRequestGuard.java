@@ -30,25 +30,34 @@ public class TalqRequestGuard implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         var version = request.getHeader("talq-api-version");
         if (version == null || version.isBlank()) {
-            throw TalqApiException.badRequest("required header 'talq-api-version' is missing");
+            throw TalqApiException.parameterMissing("required header 'talq-api-version' is missing");
         }
         var clientAddress = request.getParameter("clientAddress");
         if (clientAddress == null || clientAddress.isBlank()) {
-            throw TalqApiException.badRequest("required parameter 'clientAddress' is missing");
+            // GW_PE_007: the certifier asserts key 'parameterMissing'
+            throw TalqApiException.parameterMissing("required parameter 'clientAddress' is missing");
         }
         if (!props.cmsAddress().equals(clientAddress)) {
-            throw TalqApiException.badRequest(
+            throw TalqApiException.parameterValueNotValid(
                     "'clientAddress' must be the CMS address this gateway is bootstrapped to");
         }
         if (MUTATING.contains(request.getMethod())) {
             var requestId = request.getParameter("talqRequestId");
             if (requestId == null || requestId.isBlank()) {
-                throw TalqApiException.badRequest("required parameter 'talqRequestId' is missing");
+                // GW_PE_004: key 'parameterMissing'
+                throw TalqApiException.parameterMissing(
+                        "required parameter 'talqRequestId' is missing");
             }
             try {
                 UUID.fromString(requestId);
             } catch (IllegalArgumentException e) {
-                throw TalqApiException.badRequest("'talqRequestId' must be a UUID");
+                // GW_PE_005: key 'parameterValueNotValid'
+                throw TalqApiException.parameterValueNotValid("'talqRequestId' must be a UUID");
+            }
+            // GW_PE_006: the nil UUID is a valid format but not a valid request id
+            if ("00000000-0000-0000-0000-000000000000".equals(requestId)) {
+                throw TalqApiException.parameterValueNotValid(
+                        "'talqRequestId' must not be the nil UUID");
             }
         }
         return true;

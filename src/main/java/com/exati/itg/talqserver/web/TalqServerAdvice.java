@@ -47,13 +47,15 @@ public class TalqServerAdvice {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<List<TalqError>> handleMissingParam(MissingServletRequestParameterException ex) {
         return ResponseEntity.badRequest()
-                .body(List.of(TalqError.payload("required parameter '" + ex.getParameterName() + "' is missing")));
+                .body(List.of(TalqError.parameterMissing(
+                        "required parameter '" + ex.getParameterName() + "' is missing")));
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ResponseEntity<List<TalqError>> handleMissingHeader(MissingRequestHeaderException ex) {
         return ResponseEntity.badRequest()
-                .body(List.of(TalqError.payload("required header '" + ex.getHeaderName() + "' is missing")));
+                .body(List.of(TalqError.parameterMissing(
+                        "required header '" + ex.getHeaderName() + "' is missing")));
     }
 
     @ExceptionHandler(Exception.class)

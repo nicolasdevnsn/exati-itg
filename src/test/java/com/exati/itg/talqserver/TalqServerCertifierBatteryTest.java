@@ -209,19 +209,43 @@ class TalqServerCertifierBatteryTest {
     }
 
     @Test
-    @DisplayName("Cross-cutting: missing header/params answer 400 payloadError")
+    @DisplayName("GW_PE_004/005/006/007 — parameter error keys per certifier contract")
     void guardRules() throws Exception {
         mvc.perform(get("/devices").queryParam("clientAddress", CMS))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$[0].key").value("parameterMissing"));
         mvc.perform(get("/devices").header("talq-api-version", "2.6.0"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$[0].key").value("parameterMissing"));
         mvc.perform(get("/devices").header("talq-api-version", "2.6.0")
                         .queryParam("clientAddress", UUID.randomUUID().toString()))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$[0].key").value("parameterValueNotValid"));
         mvc.perform(post("/devices").header("talq-api-version", "2.6.0")
                         .queryParam("clientAddress", CMS)
                         .contentType("application/json").content("[]"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$[0].key").value("parameterMissing"));
+        mvc.perform(post("/devices").header("talq-api-version", "2.6.0")
+                        .queryParam("clientAddress", CMS)
+                        .queryParam("talqRequestId", "not-a-uuid")
+                        .contentType("application/json").content("[]"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$[0].key").value("parameterValueNotValid"));
+        mvc.perform(post("/devices").header("talq-api-version", "2.6.0")
+                        .queryParam("clientAddress", CMS)
+                        .queryParam("talqRequestId", NIL)
+                        .contentType("application/json").content("[]"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$[0].key").value("parameterValueNotValid"));
+    }
+
+    @Test
+    @DisplayName("GW_DV_005 — typeless PATCH accepted even with unexpected value kind")
+    void typelessPatchNeverConflicts() throws Exception {
+        mvc.perform(talq(patch("/devices/" + GW + "/gateway-function-01/vendor"))
+                        .content("{\"value\":42}"))
+                .andExpect(status().isOk());
     }
 
     @Test

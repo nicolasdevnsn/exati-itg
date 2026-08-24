@@ -103,10 +103,11 @@ public class DeviceValidator {
                     + "' must be a typed wrapper object {type, value}");
         }
         var wrapperType = wrapper.path("type").asText();
-        if (wrapperType.isBlank()) {
+        var explicitType = !wrapperType.isBlank();
+        if (!explicitType) {
             // GW_DV_005: the certifier PATCHes bare {"value": …} without the
-            // discriminator. Adopt the declared type instead of answering 409 —
-            // an EXPLICIT wrong type still conflicts below (GW_BV_009).
+            // discriminator — adopt the declared type and accept whatever value
+            // it chose (only an EXPLICIT type is held to consistency below).
             TalqTypeCatalog.attribute(functionType, attributeName)
                     .ifPresent(s -> ((ObjectNode) wrapper).put("type", s.wrapperType()));
             wrapperType = wrapper.path("type").asText();
@@ -114,16 +115,16 @@ public class DeviceValidator {
                 return; // attribute unknown to the catalog and untyped — accept as-is
             }
         }
-        // Catalog-independent self-consistency: the certifier (GW_BV_009) sends a
-        // correct wrapper with a mismatched JSON value (e.g. a number inside an
-        // AttributeString) — including on classes IT announced, which our catalog
-        // does not cover. The value must match the wrapper's own declared type.
+        // Catalog-independent self-consistency, ONLY for explicitly typed
+        // wrappers: the certifier (GW_BV_009) sends a correct wrapper with a
+        // mismatched JSON value (e.g. a number inside an AttributeString) —
+        // including on classes IT announced, which our catalog does not cover.
         var value = wrapper.path("value");
-        var valueOk = switch (wrapperType) {
+        var valueOk = !explicitType || switch (wrapperType) {
             case "AttributeString", "AttributeUri", "AttributeDateTime" -> value.isTextual();
             case "AttributeBoolean" -> value.isBoolean();
-            // 5.0 counts as an integer — the certifier serializes whole
-            // numbers as floats (GW_DV_005); 5.5 still conflicts.
+            // 5.0 counts as an integer — certifiers serialize whole numbers as
+            // floats (GW_DV_005); 5.5 still conflicts.
             case "AttributeInteger" -> value.isNumber() && value.canConvertToExactIntegral();
             case "AttributeFloat" -> value.isNumber();
             default -> true; // structured wrappers (Command, LevelState, …) validated elsewhere

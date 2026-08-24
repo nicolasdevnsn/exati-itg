@@ -18,6 +18,8 @@ public record TalqError(String key, String description) {
     public static final String RELATED_RESOURCE_NOT_FOUND = "relatedResourceNotFound";
     public static final String RESOURCE_CONFLICT = "resourceConflict";
     public static final String METHOD_NOT_ALLOWED = "methodNotAllowed";
+    public static final String PARAMETER_MISSING = "parameterMissing";
+    public static final String PARAMETER_VALUE_NOT_VALID = "parameterValueNotValid";
 
     public static TalqError payload(String description) {
         return new TalqError(PAYLOAD_ERROR, description);
@@ -33,5 +35,13 @@ public record TalqError(String key, String description) {
 
     public static TalqError conflict(String description) {
         return new TalqError(RESOURCE_CONFLICT, description);
+    }
+
+    public static TalqError parameterMissing(String description) {
+        return new TalqError(PARAMETER_MISSING, description);
+    }
+
+    public static TalqError parameterValueNotValid(String description) {
+        return new TalqError(PARAMETER_VALUE_NOT_VALID, description);
     }
 }

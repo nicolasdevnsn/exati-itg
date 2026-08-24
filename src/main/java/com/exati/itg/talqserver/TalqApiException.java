@@ -44,4 +44,14 @@ public class TalqApiException extends RuntimeException {
         return new TalqApiException(HttpStatus.METHOD_NOT_ALLOWED,
                 new TalqError(TalqError.METHOD_NOT_ALLOWED, description));
     }
+
+    public static TalqApiException parameterMissing(String description) {
+        return new TalqApiException(HttpStatus.BAD_REQUEST,
+                TalqError.parameterMissing(description));
+    }
+
+    public static TalqApiException parameterValueNotValid(String description) {
+        return new TalqApiException(HttpStatus.BAD_REQUEST,
+                TalqError.parameterValueNotValid(description));
+    }
 }
