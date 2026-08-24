@@ -44,6 +44,17 @@ public final class TalqTypeCatalog {
                     "actualLightState", new AttrSpec("AttributeLevelState", true),
                     "calendarID", new AttrSpec("AttributeString", false),
                     "lightStateChange", new AttrSpec("AttributeBoolean", false)),
+            "LampMonitorFunction", Map.of(
+                    "lampFailure", new AttrSpec("AttributeBoolean", false),
+                    "operatingHours", new AttrSpec("AttributeFloat", false),
+                    "switchOnCounter", new AttrSpec("AttributeInteger", false)),
+            "BatteryLevelSensorFunction", Map.of(
+                    "batteryLevel", new AttrSpec("AttributeFloat", true),
+                    "batteryLevelLowThreshold", new AttrSpec("AttributeFloat", true),
+                    "batteryLevelTooLow", new AttrSpec("AttributeBoolean", false)),
+            "TemperatureSensorFunction", Map.of(
+                    "temperature", new AttrSpec("AttributeFloat", false),
+                    "temperatureHighThreshold", new AttrSpec("AttributeFloat", false)),
             "ElectricalMeterFunction", Map.of(
                     "totalPower", new AttrSpec("AttributeFloat", false),
                     "totalActiveEnergy", new AttrSpec("AttributeFloat", false)));

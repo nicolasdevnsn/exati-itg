@@ -112,6 +112,51 @@ Groups: 50 grupos × 500 membros.
   Request Service) exige ≥1 dispositivo (não basta a classe).
   ⚠️ Manter o talq-seed do servidor em sincronia: o TalqGatewayStore precisa
   conhecer este device quando o certifier chamar GET /devices/{addr}/{fn}.
+- **Correção 20/08 ("No device with CommunicationFunction found"):** a classe
+  já declarava `comm-01`, mas o DEVICE anunciado ao CMS (passo 7) foi enviado
+  sem a instância. Fix: `PATCH /devices/93c751e8…` no CMS adicionando o
+  `comm-01` (physicalAddress/communicationType/communicationFailure) → 200;
+  store local sincronizado SEM restart via `POST /seed/device-classes` +
+  `POST /seed/devices` (upsert — não apaga o resto do estado em memória).
+  Obs.: `PUT /device-classes` no certifier responde 404 (rota não suportada
+  lá); classe só cresce via novo anúncio/bootstrap.
+- **Correção 21/08 ("No device with LampMonitorFunction found", GW_DDRS_005):**
+  mesma receita — classe cresceu com `lampmon-01` (LampMonitorFunction:
+  lampFailure M + operatingHours + switchOnCounter) e o device `93c751e8…`
+  ganhou a instância com valores. DESCOBERTA: **re-POST de `/device-classes`
+  com o mesmo nome e a classe crescida → 201** (o certifier aceita grow via
+  re-anúncio; não precisa de PUT nem bootstrap novo). CMS: POST classe 201 +
+  PATCH device 200. Local: seed files + TalqTypeCatalog atualizados, app
+  sincronizado via /seed sem restart.
+  **PORÉM o PATCH não bastou** — o erro persistiu na bateria seguinte: o 200
+  do `PATCH /devices/{addr}` no CMS NÃO acrescenta funções ao inventário que
+  o seletor de testes usa (e `PUT /devices` e `PUT/GET /devices/{addr}` lá
+  respondem 404 "Unknown resource type"). **Regra prática: no certifier,
+  função nova em device já anunciado = anunciar um DEVICE NOVO completo.**
+  Fix definitivo: POST de "ZENIX SIP homolog 002" com as 5 funções desde o
+  nascimento → 201 com `lampmon-01` no echo; CMS atribuiu
+  **9276bb59-2476-4bef-a0a3-a8b02d709570**. Local: 2º device no
+  end-devices.json + /seed upsert (HTTP 200 verificado).
+- **Correção 21/08 tarde ("No device with TemperatureSensorFunction found",
+  GW_DDRS_009):** mesma receita direto (classe cresce + device novo completo).
+  Classe ganhou `temp-01` (TemperatureSensorFunction: `temperature` M +
+  `temperatureHighThreshold` como atributo de CONFIGURAÇÃO — o passo 2 do
+  DDRS lê um atributo de configuração e compara com o valor corrente).
+  CMS: classe 201 + "ZENIX SIP homolog 003" 201 (temp-01 no echo), address
+  **1104ebfb-704d-4587-9520-db5361b03f46**. Local: seed + catálogo + /seed
+  upsert verificados. ⚠️ Se a bateria pedir outra função ("No device with
+  XFunction found"), repetir ESTA receita — e no fim validar com o produto
+  (formulário do Ayres) quais funções o ZENIX real declara.
+- **Correção 24/08 ("No device with BatteryLevelSensorFunction found",
+  GW_DDRS_014):** a tentativa anterior tinha editado SÓ os arquivos locais e
+  ainda com drift (batt-01 no device 003 local, que no CMS nasceu sem — 
+  retrofit é impossível lá). Fix: batt-01 removido do 003 local (espelha o
+  CMS); passo6 sincronizado com a classe do seed; classe re-anunciada com
+  BatteryLevelSensorFunction (batteryLevel M % + batteryLevelLowThreshold
+  config + batteryLevelTooLow) → 201; **"ZENIX SIP homolog 004"** nasceu
+  completo (7 funções) → 201 com batt-01 no echo, address
+  **f9abf266-8136-4fc3-875c-495912f3b6e9**; /seed upsert verificado. Sem
+  mudança de código Java → sem rebuild → gatewayUri preservado.
 
 ## Rodada anterior (19/08/2026 — token antigo, superada)
 

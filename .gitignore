@@ -59,3 +59,8 @@ HELP.md
 # Office/OneDrive artifacts
 ~$*
 desktop.ini
+
+# tunnel secrets
+homolog/.tunnel-pass
+homolog/.tunnel-askpass.sh
+homolog/tunnel.log

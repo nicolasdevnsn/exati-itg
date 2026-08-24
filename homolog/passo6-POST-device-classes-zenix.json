@@ -6,38 +6,108 @@
         "functionId": "basic-01",
         "type": "BasicFunction",
         "attributes": [
-          { "name": "swVersion" },
-          { "name": "deviceReset" },
-          { "name": "currentTime" }
+          {
+            "name": "swVersion"
+          },
+          {
+            "name": "deviceReset"
+          },
+          {
+            "name": "currentTime"
+          }
         ]
       },
       {
         "functionId": "comm-01",
         "type": "CommunicationFunction",
         "attributes": [
-          { "name": "physicalAddress" },
-          { "name": "communicationFailure" },
-          { "name": "communicationType" }
+          {
+            "name": "physicalAddress"
+          },
+          {
+            "name": "communicationFailure"
+          },
+          {
+            "name": "communicationType"
+          }
         ]
       },
       {
         "functionId": "lamp-01",
         "type": "LampActuatorFunction",
         "attributes": [
-          { "name": "defaultLightState" },
-          { "name": "targetLightCommand" },
-          { "name": "feedbackLightCommand" },
-          { "name": "actualLightState" },
-          { "name": "calendarID" },
-          { "name": "lightStateChange" }
+          {
+            "name": "defaultLightState"
+          },
+          {
+            "name": "targetLightCommand"
+          },
+          {
+            "name": "feedbackLightCommand"
+          },
+          {
+            "name": "actualLightState"
+          },
+          {
+            "name": "calendarID"
+          },
+          {
+            "name": "lightStateChange"
+          }
+        ]
+      },
+      {
+        "functionId": "lampmon-01",
+        "type": "LampMonitorFunction",
+        "attributes": [
+          {
+            "name": "lampFailure"
+          },
+          {
+            "name": "operatingHours"
+          },
+          {
+            "name": "switchOnCounter"
+          }
         ]
       },
       {
         "functionId": "meter-01",
         "type": "ElectricalMeterFunction",
         "attributes": [
-          { "name": "totalPower" },
-          { "name": "totalActiveEnergy" }
+          {
+            "name": "totalPower"
+          },
+          {
+            "name": "totalActiveEnergy"
+          }
+        ]
+      },
+      {
+        "functionId": "batt-01",
+        "type": "BatteryLevelSensorFunction",
+        "attributes": [
+          {
+            "name": "batteryLevel"
+          },
+          {
+            "name": "batteryLevelLowThreshold"
+          },
+          {
+            "name": "batteryLevelTooLow"
+          }
+        ]
+      },
+      {
+        "functionId": "temp-01",
+        "type": "TemperatureSensorFunction",
+        "attributes": [
+          {
+            "name": "temperature"
+          },
+          {
+            "name": "temperatureHighThreshold"
+          }
         ]
       }
     ]
