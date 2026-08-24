@@ -32,6 +32,19 @@ public class DeviceValidator {
 
     /** Full validation for a device the CMS wants to create (POST /devices). */
     public void validateNew(ObjectNode device) {
+        validateCreate(device, true);
+    }
+
+    /**
+     * Creation via bulk PUT upsert (GW_DV_006): the certifier generates bare
+     * test devices, so the exactly-one-BasicFunction rule (a POST announcement
+     * rule, GW_BV_003) is not enforced here.
+     */
+    public void validateUpsert(ObjectNode device) {
+        validateCreate(device, false);
+    }
+
+    private void validateCreate(ObjectNode device, boolean enforceBasicCount) {
         var address = requireText(device, "address");
         if (NIL_UUID.equals(address)) {
             throw TalqApiException.badRequest(
@@ -43,7 +56,7 @@ public class DeviceValidator {
         }
         requireText(device, "name");
         var deviceClass = classOf(device);
-        validateFunctions(device, deviceClass, true);
+        validateFunctions(device, deviceClass, true, enforceBasicCount);
     }
 
     /** Validation for a PATCH of an existing device (partial update). */
@@ -61,7 +74,7 @@ public class DeviceValidator {
                 .orElseThrow(() -> TalqApiException.relatedNotFound(
                         "device class '" + className + "' is not declared"));
         if (patch.has("functions")) {
-            validateFunctions(patch, deviceClass, false);
+            validateFunctions(patch, deviceClass, false, false);
         }
     }
 
@@ -109,7 +122,9 @@ public class DeviceValidator {
         var valueOk = switch (wrapperType) {
             case "AttributeString", "AttributeUri", "AttributeDateTime" -> value.isTextual();
             case "AttributeBoolean" -> value.isBoolean();
-            case "AttributeInteger" -> value.isIntegralNumber();
+            // 5.0 counts as an integer — the certifier serializes whole
+            // numbers as floats (GW_DV_005); 5.5 still conflicts.
+            case "AttributeInteger" -> value.isNumber() && value.canConvertToExactIntegral();
             case "AttributeFloat" -> value.isNumber();
             default -> true; // structured wrappers (Command, LevelState, …) validated elsewhere
         };
@@ -152,7 +167,8 @@ public class DeviceValidator {
                 + "' is not declared in device class '" + deviceClass.path("name").asText() + "'");
     }
 
-    private void validateFunctions(ObjectNode device, ObjectNode deviceClass, boolean isNew) {
+    private void validateFunctions(ObjectNode device, ObjectNode deviceClass,
+                                   boolean isCreate, boolean enforceBasicCount) {
         var seenIds = new HashSet<String>();
         var basicCount = 0;
         for (JsonNode fnNode : device.path("functions")) {
@@ -173,7 +189,7 @@ public class DeviceValidator {
             if ("BasicFunction".equals(actualType)) {
                 basicCount++;
             }
-            if (isNew && "GatewayFunction".equals(actualType)) {
+            if (isCreate && "GatewayFunction".equals(actualType)) {
                 throw TalqApiException.conflict(
                         "only one gateway per bootstrap: a GatewayFunction device already exists");
             }
@@ -192,7 +208,7 @@ public class DeviceValidator {
                 break;
             }
         }
-        if (isNew && classDeclaresBasic && basicCount != 1) {
+        if (enforceBasicCount && classDeclaresBasic && basicCount != 1) {
             throw TalqApiException.unprocessable(
                     "a device must instantiate exactly one BasicFunction, got " + basicCount);
         }

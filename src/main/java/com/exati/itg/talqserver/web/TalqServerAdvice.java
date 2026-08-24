@@ -29,8 +29,12 @@ import java.util.List;
 public class TalqServerAdvice {
 
     @ExceptionHandler(TalqApiException.class)
-    public ResponseEntity<List<TalqError>> handleTalq(TalqApiException ex) {
-        log.debug("TALQ error {} -> {}", ex.getStatus(), ex.getMessage());
+    public ResponseEntity<List<TalqError>> handleTalq(TalqApiException ex,
+                                                      jakarta.servlet.http.HttpServletRequest request) {
+        // INFO on purpose: certifier rejections must be diagnosable from the
+        // console without re-running the battery.
+        log.info("TALQ {} {} -> {} {}", request.getMethod(), request.getRequestURI(),
+                ex.getStatus().value(), ex.getMessage());
         return ResponseEntity.status(ex.getStatus()).body(List.of(ex.getError()));
     }
 

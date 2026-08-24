@@ -176,6 +176,14 @@ public class ControlServerController {
             throw TalqApiException.unprocessable("announced maxProgramsPerCalendar ("
                     + props.limits().maxProgramsPerCalendar() + ") would be exceeded");
         }
+        for (JsonNode rule : rules) {
+            // CalendarRule.required = [program] in the official data model
+            // (GW_ER_004: a rule without its program reference must be rejected).
+            if (!rule.hasNonNull("program")) {
+                throw TalqApiException.unprocessable(
+                        "every calendar rule requires its 'program' reference");
+            }
+        }
     }
 
     private void validateProgram(ObjectNode program) {

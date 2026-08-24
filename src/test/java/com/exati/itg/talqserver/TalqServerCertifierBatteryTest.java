@@ -247,6 +247,44 @@ class TalqServerCertifierBatteryTest {
     }
 
     @Test
+    @DisplayName("GW_DV_005 — typeless PATCH accepted; integral float accepted; 5.5 conflicts")
+    void attributePatchTolerance() throws Exception {
+        mvc.perform(talq(patch("/devices/" + GW + "/gateway-function-01/gatewayNumberOfRetries"))
+                        .content("{\"value\":5.0}"))
+                .andExpect(status().isOk());
+        mvc.perform(talq(patch("/devices/" + GW + "/gateway-function-01/gatewayNumberOfRetries"))
+                        .content("{\"type\":\"AttributeInteger\",\"value\":5.5}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    @DisplayName("GW_DV_006 — bulk PUT upserts unknown devices")
+    void bulkPutUpserts() throws Exception {
+        var a1 = UUID.randomUUID();
+        var a2 = UUID.randomUUID();
+        var body = """
+                [{"address":"%s","name":"put-1","class":"NansenZenixClass","functions":[]},
+                 {"address":"%s","name":"put-2","class":"NansenZenixClass","functions":[]}]"""
+                .formatted(a1, a2);
+        mvc.perform(talq(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/devices")).content(body))
+                .andExpect(status().isOk());
+        mvc.perform(talq(get("/devices/" + a1))).andExpect(status().isOk());
+        mvc.perform(talq(get("/devices/" + a2))).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GW_ER_004 — calendar rule without 'program' answers 422 with TALQ error array")
+    void calendarRuleWithoutProgramRejected() throws Exception {
+        var body = """
+                [{"id":"%s","ownerCMS":"%s","rules":[{"startDate":"2026-01-01"}]}]"""
+                .formatted(UUID.randomUUID(), CMS);
+        mvc.perform(talq(post("/calendars")).content(body))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$[0].key").value("payloadError"));
+    }
+
+    @Test
     @DisplayName("Groups: member must exist; limits enforced by announcement")
     void groupRules() throws Exception {
         var body = """

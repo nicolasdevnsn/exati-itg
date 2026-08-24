@@ -8,7 +8,7 @@
         "id": "gateway-function-01",
         "type": "GatewayFunction",
         "vendor": { "type": "AttributeString", "value": "Nansen" },
-        "gatewayUri": { "type": "AttributeUri", "value": "https://gnjoy-200-169-6-125.free.pinggy.net/" },
+        "gatewayUri": { "type": "AttributeUri", "value": "https://svylr-200-169-6-125.free.pinggy.net/" },
         "cmsUri": { "type": "AttributeUri", "value": "https://iotcertifier.exati.com.br:8443/cms/9yTZDDpe4H13mObY6AkfXnIxBGdOdfXxOqNawjg235Y/" }
       }
     ]

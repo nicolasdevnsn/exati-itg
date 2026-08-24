@@ -105,10 +105,10 @@ talq:
     # gateway-homolog.nansen.com.br — no DNS exists for it (decision A4 pending).
     gateway-address: ${TALQ_GATEWAY_ADDRESS:6df4b4cd-da48-4448-bfd7-bba3f5216bf2}
     cms-address:     ${TALQ_CMS_ADDRESS:10000000-0000-0000-0000-000000000001}
-    gateway-uri:     ${TALQ_GATEWAY_URI:https://gnjoy-200-169-6-125.free.pinggy.net/}
+    gateway-uri:     ${TALQ_GATEWAY_URI:https://svylr-200-169-6-125.free.pinggy.net/}
     cms-uri:         ${TALQ_CMS_URI:https://iotcertifier.exati.com.br:8443/cms/9yTZDDpe4H13mObY6AkfXnIxBGdOdfXxOqNawjg235Y/}
     vendor:          ${TALQ_VENDOR:Nansen}
-    crl-urn:         ${TALQ_CRL_URN:https://gnjoy-200-169-6-125.free.pinggy.net/crl/nansen-ca-homolog.crl}
+    crl-urn:         ${TALQ_CRL_URN:https://svylr-200-169-6-125.free.pinggy.net/crl/nansen-ca-homolog.crl}
     # Announced service limits (POST /services is one-shot; keep in sync).
     limits:
       maximum-calendars:              10

@@ -60,12 +60,24 @@ public class DeviceServerController {
 
     @PutMapping
     public List<ObjectNode> replaceAll(@RequestBody List<ObjectNode> devices) {
+        // Bulk PUT is an UPSERT (GW_DV_006): unknown addresses are created,
+        // known ones replaced.
         for (var device : devices) {
             var address = store.getDevices().keyOf(device);
-            store.getDevices().getOr404(address);
-            validator.validatePatch(address, device);
+            if (store.getDevices().find(address).isPresent()) {
+                validator.validatePatch(address, device);
+            } else {
+                validator.validateUpsert(device);
+            }
         }
-        devices.forEach(d -> store.getDevices().replaceExisting(store.getDevices().keyOf(d), d));
+        for (var device : devices) {
+            var address = store.getDevices().keyOf(device);
+            if (store.getDevices().find(address).isPresent()) {
+                store.getDevices().replaceExisting(address, device);
+            } else {
+                store.getDevices().insertNew(device);
+            }
+        }
         return devices;
     }
 
