@@ -36,7 +36,7 @@ class TalqResourceClientTest {
         RestClient restClient = builder.build();
 
         ExatiProperties props = new ExatiProperties(
-                BASE, "69", null,
+                BASE, null, null,
                 new ExatiProperties.Auth("none", null, null, null),
                 new ExatiProperties.Timeout(5_000, 10_000));
 

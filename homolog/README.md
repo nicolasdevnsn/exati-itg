@@ -69,6 +69,22 @@ Cabeçalho/params obrigatórios pelo OAS em toda rota:
 19/08, a instrução anterior "manter assim" estava errada). Nos demais passos,
 `clientAddress=<GW>`.
 
+## 3b. Túnel público (Pinggy) — comando único
+
+O gateway precisa estar acessível publicamente (o certifier chama o
+`gatewayUri` anunciado). Para subir o túnel E sincronizar tudo
+automaticamente (yml, kit, gatewayUri no CMS, app em memória):
+
+```bash
+cd "/c/Users/nsn102249/OneDrive - nansen.com.br/Projects/exati-itg/homolog" && bash tunnel.sh
+```
+
+- Mesmo comando sempre — túnel caído ou não. Ctrl+C derruba.
+- A senha do certificado é respondida automaticamente (`.tunnel-pass`).
+- Acompanhe as linhas `[sync]` até `[sync] DONE`; depois é só rodar a bateria.
+- Pinggy free expira em ~60 min e troca a URL a cada subida — túnel morto
+  gera erros enganosos na bateria (ex.: "No device with XFunction found").
+
 ## 4. As rotas e seus bodies
 
 | Passo | Request | Body | Resultado |

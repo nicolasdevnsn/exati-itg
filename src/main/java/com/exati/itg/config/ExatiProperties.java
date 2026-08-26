@@ -3,25 +3,43 @@ package com.exati.itg.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Configuration for the outbound Exati IoT Hub (TALQ Tier&nbsp;1) client.
+ * Configuration for the outbound Exati IoT Hub clients.
  *
  * <p>Bound from the {@code exati.*} tree in {@code application.yml}. All values
- * are environment-overridable so the same jar runs against staging and prod.
+ * are environment-overridable so the same jar runs against the certifier,
+ * staging and prod.
  *
- * <p><b>Auth note:</b> the published Tier&nbsp;1 OpenAPI declares {@code security: []}
- * (no scheme). That almost certainly does not reflect production, where auth is
- * expected at a gateway or via a global scheme not rendered per-endpoint. The
- * {@link Auth} block is therefore pluggable — flip {@code exati.auth.type} to
- * {@code bearer} or {@code apikey} once Exati confirms the real scheme.
+ * <p>Two independent upstreams live here:
+ * <ul>
+ *   <li>{@code exati.tickets.*} — the Solicitações (tickets) API
+ *       (https://iothub-solicitacoes.apidog.io). On the certifier the product
+ *       token is embedded in the base URL path ({@code /tickets/<token>}).</li>
+ *   <li>{@code exati.base-url} — the DEPRECATED Tier&nbsp;2 staging resource API
+ *       still referenced by {@link com.exati.itg.integration.TalqResourceClient};
+ *       kept only until that client is removed.</li>
+ * </ul>
  */
 @ConfigurationProperties(prefix = "exati")
 public record ExatiProperties(
         String baseUrl,
-        String idInstance,
         String clientAddress,
+        Tickets tickets,
         Auth auth,
         Timeout timeout
 ) {
+
+    /**
+     * Solicitações API. {@code clientAddress} is the announced TALQ gateway UUID,
+     * sent as the {@code client-address} header on create/cancel. {@code sslBundle}
+     * names a {@code spring.ssl.bundle} carrying the gateway leaf cert for mTLS
+     * (the certifier requires it); empty disables client certs.
+     */
+    public record Tickets(
+            String baseUrl,
+            String clientAddress,
+            String sslBundle
+    ) {
+    }
 
     /** Pluggable outbound auth. {@code type} is one of {@code none|bearer|apikey}. */
     public record Auth(

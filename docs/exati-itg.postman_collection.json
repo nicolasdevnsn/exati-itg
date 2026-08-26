@@ -187,7 +187,7 @@
     },
     {
       "name": "Solicitações",
-      "description": "Tier 1 tickets (demandas). `POST /api/v1/solicitacoes` is a JWT-protected edge that forwards to the Exati IoT Hub `POST /vendors/talq/clients/{idInstance}/tickets`. Requires `Authorization: Bearer {{accessToken}}` (run **Auth → Register/Login** first). Outbound Exati credentials are configured on the server via `exati.auth.*`, not sent from Postman.",
+      "description": "Solicitações (tickets). JWT-protected edges that forward to the Exati IoT Hub Solicitações API (docs: https://iothub-solicitacoes.apidog.io — criar/consultar/cancelar). On the certifier the outbound base URL embeds the product token (`/tickets/<token>`) and the server sends the `client-address` header (gateway UUID); both are configured server-side via `exati.tickets.*`, not sent from Postman. Requires `Authorization: Bearer {{accessToken}}` (run **Auth → Register/Login** first).",
       "item": [
         {
           "name": "Create Solicitação",
@@ -203,9 +203,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id_external_protocol\": 1024,\n  \"service_code\": \"SVC-01\",\n  \"id_worksite\": 42,\n  \"external_protocol\": \"EXT-2026-000123\",\n  \"description\": \"Poste apagado na via principal\",\n  \"justification\": \"Reclamação recorrente do morador\",\n  \"state_abbreviation\": \"MG\",\n  \"municipality\": \"Belo Horizonte\",\n  \"neighborhood\": \"Savassi\",\n  \"address\": \"Rua Pernambuco\",\n  \"address_number\": 1000,\n  \"zip_code\": \"30130-151\",\n  \"latitude\": \"-19.9386\",\n  \"longitude\": \"-43.9377\",\n  \"reference_point\": \"Em frente à praça\",\n  \"reporter\": \"Maria Silva\",\n  \"reporter_phone\": \"31 99999-0000\",\n  \"reporter_birth_date\": \"15/03/1985\",\n  \"age_majority_checkbox\": 1\n}"
+              "raw": "{\n  \"device_uuid\": \"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1\",\n  \"id_external_protocol\": 987654,\n  \"external_protocol\": \"PROTOCOLO-987654\",\n  \"service_code\": \"ILUMINACAO_FALHA\",\n  \"nameplate_num\": \"PLACA-4458\",\n  \"description\": \"Luminária apagada durante a noite\",\n  \"justification\": \"Abertura automática para atendimento\",\n  \"address\": \"Rua das Acácias, 120\",\n  \"latitude\": \"-23.550520\",\n  \"longitude\": \"-46.633308\"\n}"
             },
-            "description": "Create a solicitação (ticket) on the Exati IoT Hub.\n\n**Required fields**\n- `id_external_protocol` (number ≥ 1)\n- `service_code` (string)\n- `id_worksite` (number ≥ 1)\n\nAll other fields are optional. Validation runs before any outbound call, so bad input fails fast as a local 400.\n\n**Status codes**\n- `201 Created` — body has `id_demanda`, `operacao`, `data_recebido`, `status`\n- `400 Bad Request` — local bean validation failure, or Exati `INVALID_PARAMETERS`\n- `401 Unauthorized` — JWT missing/invalid/expired\n- `403 Forbidden` — Exati `CLIENT_IDENTIFICATION_MISSING`\n- `404 Not Found` — Exati `ENTITY_NOT_FOUND`\n- `409 Conflict` — Exati `RESOURCE_CONFLICT`\n- `422 Unprocessable Entity` — other Exati 4xx\n- `502 Bad Gateway` — Exati unreachable or returned 5xx"
+            "description": "Create a solicitação (ticket) on the Exati IoT Hub Solicitações API.\n\n**Required fields**\n- `device_uuid` (UUID)\n- `id_external_protocol` (number ≥ 1)\n- `external_protocol` (string)\n- `service_code` (string)\n\nOptional: `nameplate_num`, `description`, `justification`, `address`, `latitude`, `longitude`. Validation runs before any outbound call, so bad input fails fast as a local 400.\n\n**Status codes** (mirrors upstream)\n- `201 Created` — body has `id_external_protocol`, `id_ticket`, `device_uuid`, `ticket_status`\n- `200 OK` — idempotent repeat: a ticket with the same parameters already exists\n- `400 Bad Request` — local bean validation failure, or Exati `INVALID_HEADER`\n- `401 Unauthorized` — JWT missing/invalid/expired\n- `403 Forbidden` — Exati `CLIENT_OR_VENDOR_IDENTIFICATION_MISSING`\n- `404 Not Found` — Exati `ENTITY_NOT_FOUND`\n- `409 Conflict` — Exati `RESOURCE_CONFLICT` / `DEVICE_IS_NOT_AVAILABLE` / `INVALID_STATE`\n- `422 Unprocessable Entity` — Exati `INVALID_PARAMETERS`\n- `429 Too Many Requests` — Exati `TOO_MANY_REQUESTS` (concurrent request for the same protocol)\n- `502 Bad Gateway` — Exati unreachable, 5xx, or `VENDOR_REQUEST_ERROR`"
           },
           "event": [
             {
@@ -213,10 +213,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.test('status is 201 or 200 (idempotent)', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
                   "const body = pm.response.json();",
-                  "pm.test('id_demanda returned', () => pm.expect(body.id_demanda).to.be.a('number'));",
-                  "pm.test(\"operacao is 'cria'\", () => pm.expect(body.operacao).to.eql('cria'));"
+                  "pm.test('id_ticket returned', () => pm.expect(body.id_ticket).to.be.a('number'));",
+                  "pm.test('ticket_status present', () => pm.expect(body.ticket_status).to.be.a('string'));"
                 ]
               }
             }
@@ -227,26 +227,26 @@
               "originalRequest": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"id_external_protocol\": 1024,\n  \"service_code\": \"SVC-01\",\n  \"id_worksite\": 42\n}" },
+                "body": { "mode": "raw", "raw": "{\n  \"device_uuid\": \"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1\",\n  \"id_external_protocol\": 987654,\n  \"external_protocol\": \"PROTOCOLO-987654\",\n  \"service_code\": \"ILUMINACAO_FALHA\"\n}" },
                 "url": { "raw": "{{baseUrl}}/api/v1/solicitacoes" }
               },
               "status": "Created",
               "code": 201,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"id_demanda\": 987654,\n  \"operacao\": \"cria\",\n  \"data_recebido\": \"2026-07-01T13:00:00Z\",\n  \"status\": \"ok\"\n}"
+              "body": "{\n  \"id_external_protocol\": 987654,\n  \"id_ticket\": 123456789,\n  \"device_uuid\": \"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1\",\n  \"ticket_status\": \"PENDING\"\n}"
             },
             {
               "name": "400 Bad Request (validation)",
               "originalRequest": {
                 "method": "POST",
                 "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"id_external_protocol\": 1,\n  \"service_code\": \"SVC-01\"\n}" },
+                "body": { "mode": "raw", "raw": "{\n  \"id_external_protocol\": 1,\n  \"service_code\": \"ILUMINACAO_FALHA\"\n}" },
                 "url": { "raw": "{{baseUrl}}/api/v1/solicitacoes" }
               },
               "status": "Bad Request",
               "code": 400,
               "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
-              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"idWorksite: must not be null\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"deviceUuid: must not be blank\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
             },
             {
               "name": "401 Unauthorized",
@@ -260,7 +260,7 @@
               "status": "Unprocessable Entity",
               "code": 422,
               "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
-              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unprocessable Entity\",\n  \"status\": 422,\n  \"detail\": \"service_code is unknown\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
+              "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unprocessable Entity\",\n  \"status\": 422,\n  \"detail\": \"The ticket request could not be created\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
             },
             {
               "name": "502 Bad Gateway (Exati unreachable)",
@@ -268,6 +268,48 @@
               "code": 502,
               "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Gateway\",\n  \"status\": 502,\n  \"detail\": \"Exati IoT Hub is unreachable.\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Query Solicitações",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/solicitacoes?limit=50&page=1&status=PENDING",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "solicitacoes"],
+              "query": [
+                { "key": "limit", "value": "50", "description": "1–100 (default 50)" },
+                { "key": "page", "value": "1", "description": "≥ 1" },
+                { "key": "status", "value": "PENDING", "description": "DRAFT | PENDING | IN_PROGRESS | PARTIALLY_RESOLVED | RESOLVED | CANCELED", "disabled": false },
+                { "key": "deviceUuid", "value": "550e8400-e29b-41d4-a716-446655440000", "disabled": true },
+                { "key": "dateFrom", "value": "2026-01-01", "disabled": true },
+                { "key": "dateTo", "value": "2026-12-31", "disabled": true }
+              ]
+            },
+            "description": "Query solicitações → Exati `GET /tickets` (consultar). All query parameters are optional and camelCase, per the published spec.\n\n**Status codes**\n- `200 OK` — `{ page, limit, total, items[] }`; each item has `id_external_protocol`, `id_ticket`, `device_uuid`, `ticket_status`, `reported_at`, `justification`, and optionally `closed_at`, `closing_reason`\n- `400 Bad Request` — invalid paging/filters (limit outside 1–100, dateFrom after dateTo, …)\n- `401 Unauthorized` — JWT missing/invalid\n- `403` / `404` — mapped from Exati `error_code`\n- `502 Bad Gateway` — Exati unreachable / 5xx"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('items is an array', () => pm.expect(pm.response.json().items).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"page\": 1,\n  \"limit\": 50,\n  \"total\": 1,\n  \"items\": [\n    {\n      \"id_external_protocol\": 10001,\n      \"id_ticket\": 1177048,\n      \"device_uuid\": \"550e8400-e29b-41d4-a716-446655440000\",\n      \"ticket_status\": \"PENDING\",\n      \"reported_at\": \"2026-08-01T10:00:00Z\",\n      \"justification\": \"Abertura automática para atendimento\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -285,9 +327,9 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id_external_protocol\": 1024,\n  \"cod_external_ticket_origin\": \"APP\",\n  \"justification\": \"Solicitação duplicada\"\n}"
+              "raw": "{\n  \"id_external_protocol\": 987654,\n  \"justification\": \"Solicitação cancelada pelo operador\"\n}"
             },
-            "description": "Cancel a solicitação (operacao `cancela`). Forwards to Exati `DELETE /vendors/talq/clients/{idInstance}/tickets` — a DELETE **with a body**.\n\n**Required**\n- `id_external_protocol` (number ≥ 1)\n\n**Optional**\n- `cod_external_ticket_origin` (string, ≤ 4)\n- `justification` (string, ≤ 200)\n\n**Status codes**\n- `200 OK` — body has `id_demanda`, `operacao` (`cancela`), `data_recebido`, `status`\n- `400` / `403` / `404` / `409` — mapped from Exati `error_code`\n- `401 Unauthorized` — JWT missing/invalid\n- `502 Bad Gateway` — Exati unreachable / 5xx"
+            "description": "Cancel a solicitação → Exati `DELETE /tickets` — a DELETE **with a body**.\n\n**Required**\n- `id_external_protocol` (number ≥ 1)\n- `justification` (string, ≤ 200)\n\n**Status codes**\n- `200 OK` — body has `id_external_protocol`, `id_ticket`, `device_uuid`, `ticket_status` (`CANCELED`)\n- `400` / `403` / `404` — mapped from Exati `error_code`\n- `409 Conflict` — Exati `INVALID_STATE` (ticket not cancellable)\n- `429 Too Many Requests` — Exati `TOO_MANY_REQUESTS`\n- `401 Unauthorized` — JWT missing/invalid\n- `502 Bad Gateway` — Exati unreachable / 5xx / `VENDOR_REQUEST_ERROR`"
           },
           "event": [
             {
@@ -296,7 +338,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('status is 200', () => pm.response.to.have.status(200));",
-                  "pm.test(\"operacao is 'cancela'\", () => pm.expect(pm.response.json().operacao).to.eql('cancela'));"
+                  "pm.test(\"ticket_status is 'CANCELED'\", () => pm.expect(pm.response.json().ticket_status).to.eql('CANCELED'));"
                 ]
               }
             }
@@ -307,7 +349,7 @@
               "status": "OK",
               "code": 200,
               "header": [{ "key": "Content-Type", "value": "application/json" }],
-              "body": "{\n  \"id_demanda\": 987654,\n  \"operacao\": \"cancela\",\n  \"data_recebido\": \"2026-07-02T13:00:00Z\",\n  \"status\": \"ok\"\n}"
+              "body": "{\n  \"id_external_protocol\": 987654,\n  \"id_ticket\": 123456789,\n  \"device_uuid\": \"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1\",\n  \"ticket_status\": \"CANCELED\"\n}"
             },
             {
               "name": "404 Not Found (Exati ENTITY_NOT_FOUND)",

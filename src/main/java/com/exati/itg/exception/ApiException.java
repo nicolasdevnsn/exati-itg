@@ -38,6 +38,11 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.UNPROCESSABLE_ENTITY, message);
     }
 
+    /** Upstream is throttling a concurrent request for the same resource — surfaces as 429. */
+    public static ApiException tooManyRequests(String message) {
+        return new ApiException(HttpStatus.TOO_MANY_REQUESTS, message);
+    }
+
     /** Upstream (e.g. Exati) failed or was unreachable — surfaces as 502. */
     public static ApiException badGateway(String message) {
         return new ApiException(HttpStatus.BAD_GATEWAY, message);

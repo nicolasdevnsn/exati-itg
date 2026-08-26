@@ -25,9 +25,12 @@ import java.util.stream.Collectors;
 
 /**
  * Client for the Exati IoT Hub TALQ <b>Tier&nbsp;2</b> (resource) API — device
- * classes, devices, etc. Distinct from {@link ExatiTalqClient} (Tier 1): the
- * base paths carry no {@code idInstance}, payloads are arrays, and errors come
- * back as an array of {@link TalqErrorMessage} rather than a single object.
+ * classes, devices, etc. Distinct from {@link ExatiTicketsClient} (Solicitações):
+ * payloads are arrays, and errors come back as an array of
+ * {@link TalqErrorMessage} rather than a single object.
+ *
+ * <p><b>DEPRECATED</b>: hardcoded to the staging paths Exati told us to ignore;
+ * kept only until formally removed.
  */
 @Component
 @RequiredArgsConstructor

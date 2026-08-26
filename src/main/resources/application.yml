@@ -31,6 +31,23 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+  ssl:
+    bundle:
+      pem:
+        # mTLS identity for the Exati Solicitações API (exati.tickets.ssl-bundle).
+        # Paths are relative to the working directory; override per environment.
+        exati-mtls:
+          keystore:
+            certificate: ${EXATI_MTLS_CERT:file:homolog/certs/gw-homolog.crt}
+            private-key: ${EXATI_MTLS_KEY:file:homolog/certs/gw-homolog.key}
+          # The certifier's server cert is issued by Exati's private "Vendor
+          # Certifier CA" (not publicly trusted → PKIX failure without this).
+          # iotcertifier-chain.pem is the pinned server leaf captured 2026-08-24
+          # (valid to 2036); replace with the CA downloaded from the dashboard
+          # ("CA Raiz") when available.
+          truststore:
+            certificate: ${EXATI_MTLS_TRUST:file:homolog/certs/iotcertifier-chain.pem}
+
   mvc:
     problemdetails:
       enabled: true
@@ -77,15 +94,28 @@ app:
     secret:             ${APP_JWT_SECRET:change-me-in-production-this-is-a-development-only-secret-please}
     expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:60}
 
-# Outbound Exati IoT Hub (TALQ Tier 1) client.
+# Outbound Exati IoT Hub clients.
 exati:
+  # DEPRECATED — legacy Tier 2 staging resource API, kept only for TalqResourceClient.
   base-url:    ${EXATI_BASE_URL:https://iot.exati.com.br/staging}
-  id-instance: ${EXATI_ID_INSTANCE:69}
   # Optional TALQ sender UUID sent as ?clientAddress= on Tier 2 calls.
   client-address: ${EXATI_CLIENT_ADDRESS:}
+  # Solicitações (tickets) API — docs: https://iothub-solicitacoes.apidog.io
+  # (criar/consultar/cancelar). On the certifier the product token is embedded
+  # in the base URL path (/tickets/<token>); the old
+  # /vendors/talq/clients/{idInstance}/tickets contract is DEAD — do not revive it.
+  tickets:
+    base-url: ${EXATI_TICKETS_URL:https://iotcertifier.exati.com.br:8443/tickets/r7aRoPn3xdYoA3th2sxvU0i4nE0YG7Vh6sOMtmDKit8}
+    # Sent as the client-address header on create/cancel — the announced TALQ
+    # gateway UUID (bootstrap 2026-08-20, product "Gateway homolog2").
+    client-address: ${EXATI_TICKETS_CLIENT_ADDRESS:6df4b4cd-da48-4448-bfd7-bba3f5216bf2}
+    # spring.ssl.bundle name carrying the gateway leaf cert for mTLS (the
+    # certifier LB requires the pinned leaf). Set empty to disable client certs.
+    ssl-bundle: ${EXATI_TICKETS_SSL_BUNDLE:exati-mtls}
   auth:
-    # none | bearer | apikey — the published Tier 1 spec declares no auth;
-    # switch this once Exati confirms the real production scheme.
+    # none | bearer | apikey — the published Solicitações spec declares no auth
+    # (identification = token in path + client-address header); switch this once
+    # Exati confirms the real production scheme.
     type:        ${EXATI_AUTH_TYPE:none}
     token:       ${EXATI_AUTH_TOKEN:}
     header-name: ${EXATI_AUTH_HEADER:X-Api-Key}

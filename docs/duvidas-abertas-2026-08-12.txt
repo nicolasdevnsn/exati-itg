@@ -562,3 +562,93 @@ R10. TIMESTAMP EM ATRIBUTOS
   TALQ-non-obvious-points.md         97 armadilhas da spec
 
 ===============================================================================
+
+###############################################################################
+ ADENDO 2026-08-24 - TIER 1 RESOLVIDO: NOVA API DE SOLICITACOES
+###############################################################################
+
+A questao "TIER 1 / SOLICITACOES - ONDE FOI PARAR" (acima) esta ENCERRADA.
+A EXATI publicou documentacao nova, num portal Apidog dedicado:
+
+  criar:     https://iothub-solicitacoes.apidog.io/criar-solicita%C3%A7%C3%A3o-41253468e0
+  consultar: https://iothub-solicitacoes.apidog.io/consultar-solicita%C3%A7%C3%B5es-41254435e0
+  cancelar:  https://iothub-solicitacoes.apidog.io/cancelar-solicita%C3%A7%C3%A3o-41253467e0
+
+URL real no certifier (token do produto embutido no path):
+  https://iotcertifier.exati.com.br:8443/tickets/<token>
+  (token vigente registrado em application.yml: exati.tickets.base-url)
+
+Contrato novo (POST/GET/DELETE sempre no MESMO endpoint /tickets/<token>):
+  - header client-address = UUID do gateway TALQ anunciado (6df4b4cd-...)
+    em criar/cancelar; consulta nao declara headers
+  - criar: device_uuid*, id_external_protocol*, external_protocol*,
+    service_code* (+ nameplate_num, description, justification, address,
+    latitude, longitude). 201 criado / 200 repeticao idempotente.
+  - consultar: query camelCase limit(1-100), page, deviceUuid, status,
+    dateFrom, dateTo -> {page, limit, total, items[]}
+  - cancelar: DELETE com corpo {id_external_protocol*, justification* <=200}
+  - resposta: {id_external_protocol, id_ticket, device_uuid, ticket_status}
+    ticket_status: DRAFT|PENDING|IN_PROGRESS|PARTIALLY_RESOLVED|RESOLVED|CANCELED
+  - erros: {status:"error", error:{error_code, message, details}} com codigos
+    novos alem dos antigos: CLIENT_OR_VENDOR_IDENTIFICATION_MISSING,
+    GATEWAY_IDENTIFICATION_MISSING, DEVICE_IS_NOT_AVAILABLE, INVALID_STATE,
+    TOO_MANY_REQUESTS (429), VENDOR_REQUEST_ERROR (502)
+
+CONTRATO ANTIGO MORTO - nao reviver:
+  POST/DELETE /vendors/talq/clients/{idInstance}/tickets (idInstance=69),
+  respostas id_demanda/operacao, campo id_worksite. Removido do codigo em
+  24/08/2026 (ExatiTalqClient -> ExatiTicketsClient, DTOs novos, GET novo,
+  mTLS via spring.ssl.bundle exati-mtls com o leaf gw-homolog).
+
+AINDA EM ABERTO:
+  - a doc de consulta cita 403 "certificate or hash identification missing in
+    non-dev environments" para GET sem header - confirmar se o token no path
+    basta para identificar na consulta
+  - truststore: nao sabemos se o cert TLS do certifier e de CA publica
+    (openssl s_client nao validava); se o handshake Java falhar, adicionar
+    truststore no bundle exati-mtls
+
+  SMOKE TEST LIVE 24/08/2026 (openssl + leaf gw-homolog, read-only):
+  - GET  /tickets/<token>          -> 200 mas HTML do SPA (fallback do front)
+  - GET  /tickets/<token>/tickets  -> idem (SPA)
+  - POST /tickets/<token> (corpo {} invalido, nada criado) -> 405 do nginx
+  - GET  /cms/<token-tickets>/tickets -> 404 JSON "Unknown resource type"
+    (ou seja: o token chega na API do CMS, mas a rota /tickets NAO esta
+    publicada no LB do certifier ainda)
+  >> PERGUNTAR A EXATI quando a rota /tickets/<token> entra no ar no
+     certifier - nossa implementacao esta pronta e apontada para ela.
+
+  TENTATIVA DE CRIAR TICKET DE TESTE 24/08/2026 (fim a fim, app local):
+  - PKIX resolvido: o cert TLS do certifier e emitido pela "Vendor Certifier
+    CA" (privada) -> Java rejeitava o handshake. Corrigido pinando o leaf do
+    servidor capturado (homolog/certs/iotcertifier-chain.pem, valido ate
+    2036) como truststore do bundle exati-mtls. Ao baixar a "CA Raiz" do
+    dashboard, trocar o arquivo (EXATI_MTLS_TRUST).
+  - Com o handshake OK, o POST real chegou no LB e voltou o MESMO 405 do
+    nginx -> nosso app devolveu 422 "Exati request failed (HTTP 405)".
+    Pipeline inteiro validado; o bloqueio e 100% do lado da EXATI.
+  - Staging: GET /staging/tickets EXISTE e responde JSON, mas exige
+    "Basic Auth ou API Key" (o token do path nao serve como credencial -
+    testado como apikey / X-Api-Key / Bearer, sempre 401). A doc publicada
+    diz security:[] - nao bate.
+  >> PERGUNTAS PARA EXATI: (1) quando /tickets/<token> entra no ar no
+     certifier; (2) se staging for o alvo de teste, quais credenciais.
+
+  ROTA NO AR + TICKET DE TESTE CRIADO 25/08/2026:
+  - EXATI publicou a rota /tickets/<token> no certifier (em 24/08 dava 405).
+  - POST criou o ticket: id_ticket=21160824, id_external_protocol=20260824,
+    device 93c751e8 (ZENIX), status PENDING. Repeticao do POST -> 200
+    idempotente com o MESMO id_ticket (contrato confirmado).
+  - Fim a fim pelo nosso app tambem OK: POST /api/v1/solicitacoes -> 200
+    espelhado, GET -> 200 com envelope de paginacao.
+  - OBSERVACAO em aberto: GET (consultar) sempre retorna total=0/items=[],
+    mesmo sem filtro e com o ticket PENDING recem-criado - perguntar a EXATI
+    se a listagem tem atraso ou le de outra fonte.
+  - Staging continua 401 (Basic/API Key) - irrelevante agora, certifier e o alvo.
+
+  VERIFICACAO 26/08/2026: ticket 21160824 CONFIRMADO vivo (re-POST idempotente
+  -> 200 com o mesmo id_ticket, PENDING). Mas GET /tickets segue retornando
+  total=0/items=[] (sem filtro, por deviceUuid e por data) UM DIA depois -
+  nao e atraso de indexacao: a consulta nao enxerga o que o create confirma.
+  >> Perguntar a EXATI: a consulta le de outra fonte? O ticket aparece no
+     dashboard do certifier?

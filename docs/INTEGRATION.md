@@ -18,7 +18,7 @@ flowchart LR
 
   itg -->|"H2 in-memory (users, JWT)"| h2[("H2")]
 
-  itg -->|"Tier 1 tickets + Tier 2 TALQ"| hub["Exati IoT Hub  https://iot.exati.com.br/staging"]
+  itg -->|"Solicitações /tickets/<token> (mTLS)"| hub["Exati IoT Hub certifier  https://iotcertifier.exati.com.br:8443"]
 
   itg -->|"/api/v1/cim/** proxied to cim.base-url"| cim["ami-cim microservice (:18084, via Zuul :18088)"]
   cim -->|"JDBC"| mysql[("MySQL  ami / nms  @172.31.85.17:3306")]
@@ -51,7 +51,8 @@ flowchart LR
 | `POST` | `/api/v1/auth/register` | open | Create a user → `{tokenType, accessToken, expiresAt, username}` |
 | `POST` | `/api/v1/auth/login` | open | Exchange username+password for a JWT |
 | `GET`  | `/api/v1/ping` | Bearer | Health sample → `{"message":"pong",...}` |
-| `POST` | `/api/v1/solicitacoes` | Bearer | Create a *solicitação* (ticket) → forwarded to Exati Tier 1 |
+| `POST` | `/api/v1/solicitacoes` | Bearer | Create a *solicitação* (ticket) → forwarded to the Exati Solicitações API (mirrors upstream 201 created / 200 idempotent) |
+| `GET`  | `/api/v1/solicitacoes` | Bearer | Query *solicitações* (`limit`, `page`, `deviceUuid`, `status`, `dateFrom`, `dateTo`) |
 | `DELETE` | `/api/v1/solicitacoes` | Bearer | Cancel a *solicitação* |
 | `POST` | `/api/v1/talq/device-classes` | Bearer | Announce TALQ device classes (Tier 2) |
 | `POST` | `/api/v1/talq/devices` | Bearer | Register/announce TALQ devices (Tier 2) |
@@ -65,32 +66,49 @@ flowchart LR
 ```bash
 curl -X POST http://<host>:8080/api/v1/solicitacoes \
   -H "Authorization: Bearer <jwt>" -H "Content-Type: application/json" \
-  -d '{"id_external_protocol":12345,"service_code":"YOUR_CODE","id_worksite":1}'
+  -d '{"device_uuid":"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1","id_external_protocol":12345,"external_protocol":"PROTOCOLO-12345","service_code":"ILUMINACAO_FALHA"}'
 ```
-Required body fields: `id_external_protocol`, `service_code`, `id_worksite` (snake_case). See `CreateTicketRequest` for the full optional field set (location, reporter, etc.).
+Required body fields: `device_uuid`, `id_external_protocol`, `external_protocol`, `service_code` (snake_case). Optional: `nameplate_num`, `description`, `justification`, `address`, `latitude`, `longitude`. See `CreateTicketRequest`.
 
 ---
 
 ## 3. Outbound integration #1 — Exati IoT Hub (TALQ)
 
-Configured under the `exati.*` tree; base URL default `https://iot.exati.com.br/staging`.
+Configured under the `exati.*` tree.
 
-### Tier 1 — Solicitações (`/tickets`)
-Per the **updated** IoT Hub docs, the create/cancel endpoints and headers are:
+### Solicitações — tickets API (`exati.tickets.*`)
+Contract per the published docs (**source of truth**, 2026-08-24):
+- create: https://iothub-solicitacoes.apidog.io/criar-solicita%C3%A7%C3%A3o-41253468e0
+- query: https://iothub-solicitacoes.apidog.io/consultar-solicita%C3%A7%C3%B5es-41254435e0
+- cancel: https://iothub-solicitacoes.apidog.io/cancelar-solicita%C3%A7%C3%A3o-41253467e0
+
+On the certifier the product token is embedded in the base URL —
+`https://iotcertifier.exati.com.br:8443/tickets/<token>` — and the transport
+requires mTLS with the pinned gateway leaf cert (`spring.ssl.bundle` `exati-mtls`,
+default `homolog/certs/gw-homolog.{crt,key}`).
 
 | | Value |
 |---|---|
-| Create | `POST {base}/tickets` |
-| Cancel | `DELETE {base}/tickets` |
-| Headers | `apikey: <key>`, `x-id-instance: <instance>`, `x-vendor-uuid: <uuid>` |
-| Body (create) | `id_external_protocol`, `service_code`, `id_worksite` (+ optional origin/location/reporter fields) |
-| Body (cancel) | `cod_external_ticket_origin`, `id_external_protocol`, `justification` |
-| Success | `{ "id_demanda|id_protocolo": …, "operacao": "cria|cancela", "data_recebido": …, "status": "ok" }` |
+| Create | `POST {base}` — header `client-address: <gateway-uuid>`; 201 created, 200 idempotent repeat |
+| Query | `GET {base}?limit&page&deviceUuid&status&dateFrom&dateTo` (camelCase params) |
+| Cancel | `DELETE {base}` with body — header `client-address` |
+| Body (create) | `device_uuid`, `id_external_protocol`, `external_protocol`, `service_code` (+ optional `nameplate_num`, `description`, `justification`, `address`, `latitude`, `longitude`) |
+| Body (cancel) | `id_external_protocol`, `justification` (max 200) |
+| Success | `{ "id_external_protocol", "id_ticket", "device_uuid", "ticket_status" }` — status ∈ DRAFT, PENDING, IN_PROGRESS, PARTIALLY_RESOLVED, RESOLVED, CANCELED |
+| Errors | `{ "status":"error", "error": { "error_code", "message", "details" } }` — mapped to RFC 7807 by `ExatiTicketsClient` (422 INVALID_PARAMETERS, 409 RESOURCE_CONFLICT/INVALID_STATE/DEVICE_IS_NOT_AVAILABLE, 429 TOO_MANY_REQUESTS, 502 VENDOR_REQUEST_ERROR, …) |
 
-> ⚠️ **Code drift:** `ExatiTalqClient` currently targets the **older** path `/vendors/talq/clients/{idInstance}/tickets` (instance in the URL) and an `X-Api-Key`/bearer scheme. To match the updated docs it must move `idInstance` into the `x-id-instance` header, add `x-vendor-uuid`, and use the `apikey` header. Track this as a required change.
+> ☠️ **DEAD contract — do not revive:** the old "Tier 1" shape
+> `POST/DELETE /vendors/talq/clients/{idInstance}/tickets` (idInstance=69,
+> `id_demanda`/`operacao` responses, `id_worksite` field) came from a portal page
+> that no longer exists and was **removed from the codebase 2026-08-24** in favor
+> of the contract above.
 
-### Tier 2 — TALQ resource API (device modeling)
-Base paths carry **no** `idInstance`; payloads are **arrays**; every call takes optional `?clientAddress={gateway-uuid}`.
+### Tier 2 — TALQ resource API (device modeling) — DEPRECATED
+`TalqResourceClient` still targets the staging paths Exati told us to ignore
+(base `exati.base-url`, default `https://iot.exati.com.br/staging`); real TALQ
+work happens via the gateway server (`com.exati.itg.talqserver`) and the manual
+bootstrap in `homolog/`. Payloads are **arrays**; every call takes optional
+`?clientAddress={gateway-uuid}`.
 
 | Purpose | Method | Path |
 |---|---|---|
@@ -151,10 +169,13 @@ When a CIM/TALQ operation ultimately touches the database, this is roughly what 
 
 | Env var | Default | Meaning |
 |---|---|---|
-| `EXATI_BASE_URL` | `https://iot.exati.com.br/staging` | Exati IoT Hub base |
-| `EXATI_ID_INSTANCE` | `69` | Client instance id (→ `x-id-instance`) |
+| `EXATI_TICKETS_URL` | `https://iotcertifier.exati.com.br:8443/tickets/<token>` | Solicitações API base (token in path) |
+| `EXATI_TICKETS_CLIENT_ADDRESS` | `6df4b4cd-da48-4448-bfd7-bba3f5216bf2` | Gateway UUID sent as the `client-address` header |
+| `EXATI_TICKETS_SSL_BUNDLE` | `exati-mtls` | `spring.ssl.bundle` for outbound mTLS (empty = plain TLS) |
+| `EXATI_MTLS_CERT` / `EXATI_MTLS_KEY` | `file:homolog/certs/gw-homolog.{crt,key}` | PEM leaf cert/key for the bundle |
+| `EXATI_BASE_URL` | `https://iot.exati.com.br/staging` | DEPRECATED Tier 2 staging base (TalqResourceClient only) |
 | `EXATI_AUTH_TYPE` | `none` | `none` \| `bearer` \| `apikey` |
-| `EXATI_AUTH_TOKEN` / `EXATI_AUTH_KEY` / `EXATI_AUTH_HEADER` | — | Credentials for the chosen scheme (set `apikey` for the updated Tier 1) |
+| `EXATI_AUTH_TOKEN` / `EXATI_AUTH_KEY` / `EXATI_AUTH_HEADER` | — | Credentials for the chosen scheme (spec declares no auth today) |
 | `CIM_BASE_URL` | `http://localhost:18084/ami/cim` | `ami-cim` target (or point at Zuul `:18088`) |
 | `CIM_CONNECT_TIMEOUT_MS` / `CIM_READ_TIMEOUT_MS` | `5000` / `30000` | CIM client timeouts |
 | `SERVER_PORT` | `8080` | HTTP port |
@@ -178,7 +199,7 @@ H2 is in-memory (schema via Flyway, `ddl-auto: none`); no external DB needed to 
 
 ## Current status & gaps (as of this writing)
 - 🔴 JWT auth **disabled** (`SecurityConfig` TODO) — all routes open.
-- 🔴 `ExatiTalqClient` Tier 1 path/headers **out of date** vs the updated IoT Hub docs (see §3).
-- 🟡 `/talq/services` **not implemented**; device update uses `PUT` vs documented `PATCH`.
+- 🟢 Solicitações client rewritten 2026-08-24 (`ExatiTicketsClient`) against the published apidog docs: create/query/cancel, certifier token-in-path base URL, `client-address` header, mTLS bundle. Old Tier 1 contract removed.
+- 🟡 `TalqResourceClient` (Tier 2 staging) **deprecated** — pending removal.
 - 🟡 Persistence is **H2 in-memory** — nothing is durable across restarts yet.
 - 🟢 CIM passthrough (`/api/v1/cim/**`) is complete and contract-agnostic.
