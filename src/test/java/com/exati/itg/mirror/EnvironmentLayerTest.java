@@ -1,6 +1,7 @@
 package com.exati.itg.mirror;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -16,11 +17,27 @@ class EnvironmentLayerTest {
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(MirrorConfig.class);
 
+    /** Dev needs the SIP beans (SipDevConfig) plus an ObjectMapper. */
+    private final ApplicationContextRunner devRunner = runner
+            .withUserConfiguration(SipDevConfig.class, JacksonAutoConfiguration.class)
+            .withPropertyValues(
+                    "itg.dev.access=tunnel",
+                    "itg.dev.ssh.host=127.0.0.1",
+                    "itg.dev.ssh.port=1",
+                    "itg.dev.ssh.user=test",
+                    "itg.dev.ssh.key-path=does-not-exist.pem",
+                    "itg.dev.ssh.local-port=0",
+                    "itg.dev.db.host=127.0.0.1",
+                    "itg.dev.db.port=1",
+                    "itg.dev.db.schema=ami",
+                    "itg.dev.db.username=ami",
+                    "itg.dev.db.password=x");
+
     @Test
-    void dev_wiresDevMirror() {
-        runner.withPropertyValues("itg.env=dev")
+    void dev_wiresSipMirror() {
+        devRunner.withPropertyValues("itg.env=dev")
                 .run(ctx -> assertThat(ctx).getBean(TicketMirror.class)
-                        .isInstanceOf(DevTicketMirror.class));
+                        .isInstanceOf(SipTicketMirror.class));
     }
 
     @Test
@@ -39,9 +56,9 @@ class EnvironmentLayerTest {
 
     @Test
     void bindingIsCaseInsensitive() {
-        runner.withPropertyValues("itg.env=DEV")
+        devRunner.withPropertyValues("itg.env=DEV")
                 .run(ctx -> assertThat(ctx).getBean(TicketMirror.class)
-                        .isInstanceOf(DevTicketMirror.class));
+                        .isInstanceOf(SipTicketMirror.class));
     }
 
     @Test
