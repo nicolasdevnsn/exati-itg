@@ -20,6 +20,8 @@ repositories {
 
 extra["springdocVersion"] = "2.7.0"
 extra["jjwtVersion"]      = "0.12.6"
+extra["sshdVersion"]      = "2.14.0"
+extra["bouncyVersion"]    = "1.79"
 
 dependencies {
     // ── Web ─────────────────────────────────────────────────────────────
@@ -36,6 +38,12 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.flywaydb:flyway-core")
     runtimeOnly("com.h2database:h2")
+
+    // ── SIP ticket mirror (dev env only): SSH tunnel + remote MySQL ─────
+    implementation("org.apache.sshd:sshd-core:${property("sshdVersion")}")
+    // PKCS#1 PEM key support for sshd (the dev VM key is BEGIN RSA PRIVATE KEY)
+    implementation("org.bouncycastle:bcpkix-jdk18on:${property("bouncyVersion")}")
+    runtimeOnly("com.mysql:mysql-connector-j")
 
     // ── Ops ─────────────────────────────────────────────────────────────
     implementation("org.springframework.boot:spring-boot-starter-actuator")

@@ -1,3 +1,32 @@
+# Deployment environment of this instance (dev | qa | prod). Gates
+# environment-specific infrastructure — today the SIP ticket mirror, which
+# only dev implements (SSH tunnel); qa/prod are explicit no-ops.
+itg:
+  env: ${ITG_ENV:dev}
+  # Dev-only SIP database access (read only when itg.env=dev): the app opens
+  # its own SSH port-forward to the SIP MySQL and the mirror datasource
+  # connects to the local end. Defaults match the documented dev VM; the key
+  # is expected in the EXATI docs folder next to this repo.
+  dev:
+    # How the SIP database is reached: tunnel (app-managed SSH port-forward,
+    # for running outside the SIP environment) or direct (address routable
+    # as-is, for running inside it). ssh.* is only read in tunnel mode.
+    access: ${ITG_DEV_DB_ACCESS:tunnel}
+    ssh:
+      host:       ${ITG_DEV_SSH_HOST:3.88.22.232}
+      port:       ${ITG_DEV_SSH_PORT:22}
+      user:       ${ITG_DEV_SSH_USER:hong_baiyi}
+      key-path:   ${ITG_DEV_SSH_KEY:../EXATI/hong_baiyi.pem}
+      local-port: ${ITG_DEV_SSH_LOCAL_PORT:13306}
+    db:
+      # Remote end of the forward, as seen FROM the SSH VM.
+      host:     ${ITG_DEV_DB_HOST:34.232.210.135}
+      port:     ${ITG_DEV_DB_PORT:3306}
+      schema:   ${ITG_DEV_DB_SCHEMA:ami}
+      username: ${ITG_DEV_DB_USER:ami}
+      # Deliberately no default — set it locally; never commit it here.
+      password: ${ITG_DEV_DB_PASSWORD:}
+
 spring:
   application:
     name: exati-itg

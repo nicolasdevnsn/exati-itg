@@ -652,3 +652,21 @@ AINDA EM ABERTO:
   nao e atraso de indexacao: a consulta nao enxerga o que o create confirma.
   >> Perguntar a EXATI: a consulta le de outra fonte? O ticket aparece no
      dashboard do certifier?
+
+  FORMULARIO DO AYRES ATUALIZADO 27/08/2026 (exigencias da bateria DDRS):
+  - O levantamento-talq-luminaria.html (docs/ + Desktop + artifact) ganhou as
+    4 funcoes que a bateria automatica forcou na classe de homolog e que NAO
+    estavam no formulario: TemperatureSensorFunction (GW_DDRS_009),
+    BatteryLevelSensorFunction (GW_DDRS_014), LocationSensorFunction
+    (GW_DDRS_022) e OrientationFunction (GW_DDRS_024) - extraidas do data
+    model oficial 2.6.3 (todas lighting cms=O/gw=O; o filtro original do
+    formulario nao as pegou porque o x-talq-profiles delas fica dentro do
+    allOf). Formulario agora cobre 14 funcoes.
+  - Selo novo "CERTIFICADOR" nos 5 atributos de configuracao que o passo 2
+    do DDRS le e compara com o estado corrente: onLevel (Photocell),
+    temperatureHighThreshold, batteryLevelLowThreshold,
+    locationChangedThreshold, orientationChangedThreshold.
+  - Nota nova no masthead: a classe de homolog declara 10 funcoes SO para
+    manter a bateria verde; o que o Ayres marcar vira o contrato de producao.
+  - Ayres segue sem devolver o formulario preenchido; a copia com ele esta
+    DUAS versoes atras (pre-correcao de terminologia de 14/08) - reenviar.
