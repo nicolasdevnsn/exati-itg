@@ -15,7 +15,12 @@ class SipDevConfigTest {
 
     private final ApplicationContextRunner runner = new ApplicationContextRunner()
             .withUserConfiguration(SipDevConfig.class)
+            .withBean(com.exati.itg.integration.ExatiTicketsClient.class,
+                    () -> org.mockito.Mockito.mock(com.exati.itg.integration.ExatiTicketsClient.class))
             .withPropertyValues(
+                    "itg.dev.recheck.period-minutes=15",
+                    "itg.dev.recheck.terminal-statuses=RESOLVED,CANCELED",
+                    "itg.dev.recheck.expire-days=60",
                     // Unreachable dummy endpoints: bean creation must succeed
                     // without any live SSH/DB (connections are lazy/retried).
                     "itg.dev.access=tunnel",

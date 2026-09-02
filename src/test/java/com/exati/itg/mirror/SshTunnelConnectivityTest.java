@@ -93,7 +93,8 @@ class SshTunnelConnectivityTest {
                 new ItgProperties.Dev.Ssh(sshHost, sshPort, "test",
                         keyPath.toString(), localPort),
                 new ItgProperties.Dev.Db("127.0.0.1", echoServer.getLocalPort(),
-                        "ami", "ami", ""));
+                        "ami", "ami", ""),
+                new ItgProperties.Dev.Recheck(15, java.util.Set.of("RESOLVED", "CANCELED"), 60));
     }
 
     private static int freePort() throws Exception {

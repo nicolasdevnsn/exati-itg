@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS exati_itg_ticket (
     cancel_justification VARCHAR(200) NULL,
     submitted_at         DATETIME     NOT NULL COMMENT 'when Exati accepted the create',
     cancelled_at         DATETIME     NULL     COMMENT 'when Exati accepted the cancel',
+    -- Synced from the Exati listing by the recheck job
+    reported_at          DATETIME     NULL     COMMENT 'reported_at from the Exati listing',
+    closed_at            DATETIME     NULL     COMMENT 'closed_at from the Exati listing',
+    closing_reason       VARCHAR(255) NULL     COMMENT 'closing_reason from the Exati listing',
     last_status_at       DATETIME     NULL     COMMENT 'when ticket_status last changed',
     last_checked_at      DATETIME     NULL     COMMENT 'last recheck poll against Exati',
 

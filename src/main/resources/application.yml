@@ -26,6 +26,12 @@ itg:
       username: ${ITG_DEV_DB_USER:ami}
       # Deliberately no default — set it locally; never commit it here.
       password: ${ITG_DEV_DB_PASSWORD:}
+    # Recheck job: sync non-terminal mirrored tickets from the Exati listing.
+    recheck:
+      period-minutes:    ${ITG_DEV_RECHECK_MINUTES:15}
+      terminal-statuses: ${ITG_DEV_RECHECK_TERMINAL:RESOLVED,CANCELED}
+      # Tickets older than this stop being rechecked (give-up window).
+      expire-days:       ${ITG_DEV_RECHECK_EXPIRE_DAYS:60}
 
 spring:
   application:

@@ -49,6 +49,12 @@ public class SipDevConfig {
         return new SipDatabase(props.dev().db(), connectivity);
     }
 
+    @Bean(destroyMethod = "close")
+    public TicketRecheckJob ticketRecheckJob(ItgProperties props, SipDatabase db,
+                                             com.exati.itg.integration.ExatiTicketsClient exatiClient) {
+        return new TicketRecheckJob(db, exatiClient, props.dev().recheck());
+    }
+
     /** Shows up under /actuator/health as "sipMirror". */
     @Bean
     public HealthIndicator sipMirrorHealthIndicator(SipDatabaseConnectivity connectivity,

@@ -20,7 +20,12 @@ class EnvironmentLayerTest {
     /** Dev needs the SIP beans (SipDevConfig) plus an ObjectMapper. */
     private final ApplicationContextRunner devRunner = runner
             .withUserConfiguration(SipDevConfig.class, JacksonAutoConfiguration.class)
+            .withBean(com.exati.itg.integration.ExatiTicketsClient.class,
+                    () -> org.mockito.Mockito.mock(com.exati.itg.integration.ExatiTicketsClient.class))
             .withPropertyValues(
+                    "itg.dev.recheck.period-minutes=15",
+                    "itg.dev.recheck.terminal-statuses=RESOLVED,CANCELED",
+                    "itg.dev.recheck.expire-days=60",
                     "itg.dev.access=tunnel",
                     "itg.dev.ssh.host=127.0.0.1",
                     "itg.dev.ssh.port=1",

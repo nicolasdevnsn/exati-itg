@@ -23,8 +23,21 @@ public record ItgProperties(
     public record Dev(
             Access access,
             Ssh ssh,
-            Db db
+            Db db,
+            Recheck recheck
     ) {
+
+        /**
+         * Recheck job: re-reads non-terminal mirrored tickets from the Exati
+         * listing and syncs the known fields. Tickets in a terminal status are
+         * never re-checked.
+         */
+        public record Recheck(
+                long periodMinutes,
+                java.util.Set<String> terminalStatuses,
+                long expireDays
+        ) {
+        }
 
         /**
          * Transport to the SIP database. {@code TUNNEL} = app-managed SSH
