@@ -7,14 +7,34 @@
   "auth": {
     "type": "bearer",
     "bearer": [
-      { "key": "token", "value": "{{accessToken}}", "type": "string" }
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
     ]
   },
   "variable": [
-    { "key": "baseUrl",     "value": "http://localhost:8080", "type": "string" },
-    { "key": "username",    "value": "alice",                  "type": "string" },
-    { "key": "password",    "value": "password-strong-1",      "type": "string" },
-    { "key": "accessToken", "value": "",                       "type": "string" }
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "alice",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "password-strong-1",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
   ],
   "item": [
     {
@@ -24,15 +44,27 @@
         {
           "name": "Register",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/register",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "register"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "register"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -60,27 +92,52 @@
               "name": "201 Created",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"username\": \"alice\",\n  \"password\": \"password-strong-1\"\n}" },
-                "url": { "raw": "{{baseUrl}}/api/v1/auth/register" }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"alice\",\n  \"password\": \"password-strong-1\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/auth/register"
+                }
               },
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"tokenType\": \"Bearer\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSIsImlhdCI6MTcxOTc0NDAwMCwiZXhwIjoxNzE5NzQ3NjAwfQ.signature\",\n  \"expiresAt\": \"2026-06-30T14:00:00Z\",\n  \"username\": \"alice\"\n}"
             },
             {
               "name": "409 Conflict",
               "status": "Conflict",
               "code": 409,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"Username already taken: alice\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
             },
             {
               "name": "400 Bad Request",
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"password: size must be between 8 and 128\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
             }
           ]
@@ -88,15 +145,27 @@
         {
           "name": "Login",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/auth/login",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "auth", "login"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "login"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -124,14 +193,24 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"tokenType\": \"Bearer\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhbGljZSIsImlhdCI6MTcxOTc0NDAwMCwiZXhwIjoxNzE5NzQ3NjAwfQ.signature\",\n  \"expiresAt\": \"2026-06-30T14:00:00Z\",\n  \"username\": \"alice\"\n}"
             },
             {
               "name": "401 Unauthorized",
               "status": "Unauthorized",
               "code": 401,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Invalid credentials.\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
             }
           ]
@@ -149,8 +228,14 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/ping",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "ping"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "ping"
+              ]
             },
             "description": "Sample protected endpoint. Returns `pong` plus the current server timestamp.\n\n**Status codes**\n- `200 OK` — body: `{ \"message\": \"pong\", \"timestamp\": \"...\" }`\n- `401 Unauthorized` — token missing, invalid, or expired"
           },
@@ -171,14 +256,24 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"message\": \"pong\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
             },
             {
               "name": "401 Unauthorized",
               "status": "Unauthorized",
               "code": 401,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication required.\",\n  \"timestamp\": \"2026-06-30T13:00:00Z\"\n}"
             }
           ]
@@ -194,12 +289,21 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/solicitacoes",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "solicitacoes"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "solicitacoes"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -226,47 +330,92 @@
               "name": "201 Created",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"device_uuid\": \"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1\",\n  \"id_external_protocol\": 987654,\n  \"external_protocol\": \"PROTOCOLO-987654\",\n  \"service_code\": \"ILUMINACAO_FALHA\"\n}" },
-                "url": { "raw": "{{baseUrl}}/api/v1/solicitacoes" }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"device_uuid\": \"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1\",\n  \"id_external_protocol\": 987654,\n  \"external_protocol\": \"PROTOCOLO-987654\",\n  \"service_code\": \"ILUMINACAO_FALHA\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/solicitacoes"
+                }
               },
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"id_external_protocol\": 987654,\n  \"id_ticket\": 123456789,\n  \"device_uuid\": \"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1\",\n  \"ticket_status\": \"PENDING\"\n}"
             },
             {
               "name": "400 Bad Request (validation)",
               "originalRequest": {
                 "method": "POST",
-                "header": [{ "key": "Content-Type", "value": "application/json" }],
-                "body": { "mode": "raw", "raw": "{\n  \"id_external_protocol\": 1,\n  \"service_code\": \"ILUMINACAO_FALHA\"\n}" },
-                "url": { "raw": "{{baseUrl}}/api/v1/solicitacoes" }
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_external_protocol\": 1,\n  \"service_code\": \"ILUMINACAO_FALHA\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/solicitacoes"
+                }
               },
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"deviceUuid: must not be blank\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
             },
             {
               "name": "401 Unauthorized",
               "status": "Unauthorized",
               "code": 401,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication required.\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
             },
             {
               "name": "422 Unprocessable Entity (Exati error)",
               "status": "Unprocessable Entity",
               "code": 422,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Unprocessable Entity\",\n  \"status\": 422,\n  \"detail\": \"The ticket request could not be created\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
             },
             {
               "name": "502 Bad Gateway (Exati unreachable)",
               "status": "Bad Gateway",
               "code": 502,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Gateway\",\n  \"status\": 502,\n  \"detail\": \"Exati IoT Hub is unreachable.\",\n  \"timestamp\": \"2026-07-01T13:00:00Z\"\n}"
             }
           ]
@@ -278,18 +427,49 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/solicitacoes?limit=50&page=1&status=PENDING",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "solicitacoes"],
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "solicitacoes"
+              ],
               "query": [
-                { "key": "limit", "value": "50", "description": "1–100 (default 50)" },
-                { "key": "page", "value": "1", "description": "≥ 1" },
-                { "key": "status", "value": "PENDING", "description": "DRAFT | PENDING | IN_PROGRESS | PARTIALLY_RESOLVED | RESOLVED | CANCELED", "disabled": false },
-                { "key": "deviceUuid", "value": "550e8400-e29b-41d4-a716-446655440000", "disabled": true },
-                { "key": "dateFrom", "value": "2026-01-01", "disabled": true },
-                { "key": "dateTo", "value": "2026-12-31", "disabled": true }
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "description": "1–100 (default 50)"
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "≥ 1"
+                },
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "DRAFT | PENDING | IN_PROGRESS | PARTIALLY_RESOLVED | RESOLVED | CANCELED",
+                  "disabled": false
+                },
+                {
+                  "key": "deviceUuid",
+                  "value": "550e8400-e29b-41d4-a716-446655440000",
+                  "disabled": true
+                },
+                {
+                  "key": "dateFrom",
+                  "value": "2026-01-01",
+                  "disabled": true
+                },
+                {
+                  "key": "dateTo",
+                  "value": "2026-12-31",
+                  "disabled": true
+                }
               ]
             },
-            "description": "Query solicitações → Exati `GET /tickets` (consultar). All query parameters are optional and camelCase, per the published spec.\n\n**Status codes**\n- `200 OK` — `{ page, limit, total, items[] }`; each item has `id_external_protocol`, `id_ticket`, `device_uuid`, `ticket_status`, `reported_at`, `justification`, and optionally `closed_at`, `closing_reason`\n- `400 Bad Request` — invalid paging/filters (limit outside 1–100, dateFrom after dateTo, …)\n- `401 Unauthorized` — JWT missing/invalid\n- `403` / `404` — mapped from Exati `error_code`\n- `502 Bad Gateway` — Exati unreachable / 5xx"
+            "description": "Query solicitações → Exati `GET /tickets` (consultar). All query parameters are optional and camelCase, per the published spec.\n\n**Status codes**\n- `200 OK` — `{ page, limit, total, items[] }`; each item has `id_external_protocol`, `id_ticket`, `device_uuid`, `ticket_status`, `reported_at`, `justification`, and optionally `closed_at`, `closing_reason`\n- `400 Bad Request` — invalid paging/filters (limit outside 1–100, dateFrom after dateTo, …)\n- `401 Unauthorized` — JWT missing/invalid\n- `403` / `404` — mapped from Exati `error_code`\n- `502 Bad Gateway` — Exati unreachable / 5xx\n\nNOTA (dev, 02/09/2026): nos ambientes com espelho configurado (hoje dev), esta consulta responde a partir da tabela ami.exati_itg_ticket no banco do SIP, nao da EXATI - contorno para a listagem da EXATI que retorna total=0. Onde nao ha espelho (qa/prod), a chamada segue direto para a EXATI. O formato da resposta e identico nos dois casos."
           },
           "event": [
             {
@@ -308,7 +488,12 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"page\": 1,\n  \"limit\": 50,\n  \"total\": 1,\n  \"items\": [\n    {\n      \"id_external_protocol\": 10001,\n      \"id_ticket\": 1177048,\n      \"device_uuid\": \"550e8400-e29b-41d4-a716-446655440000\",\n      \"ticket_status\": \"PENDING\",\n      \"reported_at\": \"2026-08-01T10:00:00Z\",\n      \"justification\": \"Abertura automática para atendimento\"\n    }\n  ]\n}"
             }
           ]
@@ -318,12 +503,21 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/solicitacoes",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "solicitacoes"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "solicitacoes"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -348,14 +542,24 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"id_external_protocol\": 987654,\n  \"id_ticket\": 123456789,\n  \"device_uuid\": \"6f7f4c6d-0d6e-4f2b-8d58-3c0d3d92f1a1\",\n  \"ticket_status\": \"CANCELED\"\n}"
             },
             {
               "name": "404 Not Found (Exati ENTITY_NOT_FOUND)",
               "status": "Not Found",
               "code": 404,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"No ticket for id_external_protocol 1024\",\n  \"timestamp\": \"2026-07-02T13:00:00Z\"\n}"
             }
           ]
@@ -371,12 +575,22 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/talq/device-classes",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "talq", "device-classes"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "talq",
+                "device-classes"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -401,14 +615,24 @@
               "name": "201 Created",
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "[\n  {\n    \"name\": \"StreetLightController\",\n    \"functions\": [\n      { \"functionId\": \"basic001\", \"type\": \"BasicFunction\" }\n    ]\n  }\n]"
             },
             {
               "name": "400 Bad Request (Exati payloadError)",
               "status": "Bad Request",
               "code": 400,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"payloadError: functions must not be empty\",\n  \"timestamp\": \"2026-07-02T13:00:00Z\"\n}"
             }
           ]
@@ -418,12 +642,22 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": {
               "raw": "{{baseUrl}}/api/v1/talq/devices",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "talq", "devices"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "talq",
+                "devices"
+              ]
             },
             "body": {
               "mode": "raw",
@@ -447,14 +681,24 @@
               "name": "201 Created",
               "status": "Created",
               "code": 201,
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "[\n  {\n    \"address\": \"00000000-0000-0000-0000-000000000001\",\n    \"name\": \"Lamp-Savassi-001\",\n    \"class\": \"StreetLightController\",\n    \"functions\": [\n      { \"id\": \"lampActuator001\", \"type\": \"LampActuatorFunction\" }\n    ]\n  }\n]"
             },
             {
               "name": "409 Conflict (Exati resourceConflict)",
               "status": "Conflict",
               "code": 409,
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"about:blank\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"resourceConflict: device already exists\",\n  \"timestamp\": \"2026-07-02T13:00:00Z\"\n}"
             }
           ]
@@ -468,12 +712,19 @@
         {
           "name": "Health",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/actuator/health",
-              "host": ["{{baseUrl}}"],
-              "path": ["actuator", "health"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "health"
+              ]
             },
             "description": "Liveness/readiness check. Open to anonymous callers."
           },
@@ -482,7 +733,12 @@
               "name": "200 OK",
               "status": "OK",
               "code": 200,
-              "header": [{ "key": "Content-Type", "value": "application/vnd.spring-boot.actuator.v3+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/vnd.spring-boot.actuator.v3+json"
+                }
+              ],
               "body": "{\n  \"status\": \"UP\"\n}"
             }
           ]
@@ -490,12 +746,19 @@
         {
           "name": "Info",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/actuator/info",
-              "host": ["{{baseUrl}}"],
-              "path": ["actuator", "info"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "info"
+              ]
             },
             "description": "Build / git metadata for the running JAR. Open."
           },
@@ -504,12 +767,19 @@
         {
           "name": "Prometheus",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/actuator/prometheus",
-              "host": ["{{baseUrl}}"],
-              "path": ["actuator", "prometheus"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "prometheus"
+              ]
             },
             "description": "Metrics in Prometheus exposition format (text/plain). Open so a scraper can poll without credentials."
           },
@@ -521,8 +791,13 @@
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/actuator/metrics",
-              "host": ["{{baseUrl}}"],
-              "path": ["actuator", "metrics"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actuator",
+                "metrics"
+              ]
             },
             "description": "Lists all Micrometer metric names. Protected — requires a Bearer token."
           },
@@ -537,12 +812,19 @@
         {
           "name": "OpenAPI 3 JSON",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/v3/api-docs",
-              "host": ["{{baseUrl}}"],
-              "path": ["v3", "api-docs"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "v3",
+                "api-docs"
+              ]
             },
             "description": "Auto-generated OpenAPI 3 spec for this API. Useful for re-importing into Postman as the source of truth, or feeding to a client generator."
           },
@@ -551,12 +833,18 @@
         {
           "name": "Swagger UI",
           "request": {
-            "auth": { "type": "noauth" },
+            "auth": {
+              "type": "noauth"
+            },
             "method": "GET",
             "url": {
               "raw": "{{baseUrl}}/swagger-ui.html",
-              "host": ["{{baseUrl}}"],
-              "path": ["swagger-ui.html"]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "swagger-ui.html"
+              ]
             },
             "description": "Interactive Swagger UI. Open in a browser, click **Authorize**, paste the JWT to call protected endpoints."
           },

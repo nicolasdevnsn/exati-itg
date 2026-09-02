@@ -670,3 +670,31 @@ AINDA EM ABERTO:
     manter a bateria verde; o que o Ayres marcar vira o contrato de producao.
   - Ayres segue sem devolver o formulario preenchido; a copia com ele esta
     DUAS versoes atras (pre-correcao de terminologia de 14/08) - reenviar.
+
+  ESPELHO DE TICKETS NO BANCO SIP - IMPLEMENTADO 01-02/09/2026:
+  - Nova camada de ambiente ITG_ENV (dev|qa|prod). So dev tem implementacao
+    de espelho hoje; qa/prod = no-op explicito (NUNCA cair no tunel de dev).
+  - Tabela ami.exati_itg_ticket (convencao: exati_itg_<entidade>) recebe
+    copia de todo ticket submetido; escrita assincrona best-effort apos a
+    EXATI aceitar - problema no espelho nunca afeta a resposta ao chamador.
+  - Acesso ao MySQL do SIP e uma CAMADA TROCAVEL (SipDatabaseConnectivity):
+    hoje tunel SSH gerenciado pelo proprio app; quando o app rodar dentro do
+    ambiente SIP, basta ITG_DEV_DB_ACCESS=direct - sem SSH, sem mudar codigo.
+  - Job de recheck a cada 15 min sincroniza os tickets nao-terminais com a
+    listagem da EXATI (status, reported_at, closed_at, closing_reason);
+    desiste de tickets com mais de 60 dias.
+  - GET /api/v1/solicitacoes agora responde DO ESPELHO em dev (cai para a
+    EXATI onde nao ha espelho configurado).
+
+  >> PENDENTE COM A EXATI (bloqueia o job de recheck):
+     1. A listagem GET /tickets segue retornando total=0/items=[] mesmo logo
+        apos um create bem-sucedido (reconfirmado 01/09 com o ticket
+        21160901). Enquanto isso, o recheck roda mas nao encontra nada para
+        sincronizar. A consulta le de outra fonte? Ha atraso? O ticket
+        aparece no dashboard do certifier?
+     2. Confirmar o enum completo de ticket_status e QUAIS sao terminais.
+        Assumimos RESOLVED e CANCELED como terminais (configuravel em
+        ITG_DEV_RECHECK_TERMINAL) a partir do enum publicado.
+     3. Alem de status/reported_at/closed_at/closing_reason, a EXATI atualiza
+        outros campos do ticket ao longo do ciclo de vida? (Hoje o espelho
+        sincroniza apenas esses campos conhecidos.)

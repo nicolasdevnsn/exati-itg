@@ -79,7 +79,8 @@ public class TicketRecheckJob implements AutoCloseable {
                 recheck.periodMinutes(), terminalStatuses, expireDays);
     }
 
-    private void runSafely() {
+    /** One pass, never throwing — what the scheduler runs. */
+    void runSafely() {
         try {
             runOnce();
         } catch (Exception e) {
@@ -131,6 +132,9 @@ public class TicketRecheckJob implements AutoCloseable {
         for (int page = 1; page <= MAX_PAGES; page++) {
             TicketQueryResponse response = exatiClient.queryTickets(
                     new TicketQuery(PAGE_SIZE, page, null, null, null, null));
+            if (response == null) {
+                break;
+            }
             List<TicketQueryResponse.Item> items =
                     response.items() != null ? response.items() : List.of();
             items.forEach(i -> byId.put(i.idTicket(), i));

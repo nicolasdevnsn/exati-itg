@@ -168,6 +168,11 @@ public class SipTicketMirror implements TicketMirror, AutoCloseable {
         }
     }
 
+    /** Writes still queued for retry (0 = everything mirrored). */
+    public int pendingWrites() {
+        return pending.size();
+    }
+
     /** Answer the listing from the mirror; empty on any failure (caller falls back to Exati). */
     @Override
     public Optional<TicketQueryResponse> query(TicketQuery query) {

@@ -165,6 +165,72 @@ When a CIM/TALQ operation ultimately touches the database, this is roughly what 
 
 ---
 
+## 4b. Environment layer & the SIP ticket mirror
+
+Every instance declares its environment in **`ITG_ENV`** (`dev` | `qa` | `prod`;
+unknown or missing = startup failure, so a deploy can never silently inherit
+dev behavior). The value gates one thing today: the **ticket mirror**.
+
+**What the mirror is.** A copy, in the SIP `ami` database, of every solicitação
+this app submits to Exati — table **`ami.exati_itg_ticket`** (naming convention
+for app-owned tables in that schema: `exati_itg_<entity>`, snake_case,
+singular). Exati remains the source of truth; the mirror exists because Exati's
+own listing currently answers `total=0` (see the open questions), and because a
+local copy is queryable.
+
+| Environment | `TicketMirror` implementation | Behavior |
+|---|---|---|
+| `dev` | `SipTicketMirror` | Writes/reads `ami.exati_itg_ticket` over the configured transport |
+| `qa`, `prod` | `NoOpTicketMirror` | Records nothing; the listing falls back to querying Exati (today's behavior) |
+
+`SipTicketMirror` is **not** dev-specific code — when qa/prod get a database
+access path, they wire the same class with their own credentials/transport.
+
+**Transport is a swappable layer** (`SipDatabaseConnectivity`), chosen by
+`ITG_DEV_DB_ACCESS`:
+
+- `tunnel` (default) — `SshTunnelConnectivity` opens an app-managed SSH
+  port-forward to the SIP MySQL (watchdog reconnects every 15s; the tunnel
+  being down never takes the app down).
+- `direct` — `DirectConnectivity`, for when the app runs **inside** the SIP
+  environment and the database address is routable as-is. No SSH involved.
+
+The mirror datasource is a private Hikari pool exposing a `JdbcClient` (plain
+SQL, no JPA — a second persistence unit would collide with the primary H2
+setup). `/actuator/health` gains a **`sipMirror`** indicator (transport up +
+`SELECT 1`).
+
+**Write path (best-effort).** After Exati accepts a create (201/200) or a
+cancel, `SolicitacaoService` calls the mirror; the call only enqueues, and a
+flusher upserts into `exati_itg_ticket` every 5s (`INSERT … ON DUPLICATE KEY
+UPDATE`), retrying while the database is unreachable. A mirror problem never
+changes what the caller receives. Pending writes live in memory only — a
+restart during an outage loses them (accepted: no local staging table).
+
+**Recheck job.** Every `ITG_DEV_RECHECK_MINUTES` (15) the job re-reads
+non-terminal mirrored tickets from the Exati listing and syncs the known fields
+(`ticket_status`, `reported_at`, `closed_at`, `closing_reason`); terminal
+statuses (`RESOLVED`, `CANCELED`) are never re-checked, and tickets older than
+`ITG_DEV_RECHECK_EXPIRE_DAYS` (60) stop being checked at all. A ticket absent
+from the listing only gets `last_checked_at` stamped.
+
+**Read path.** `GET /api/v1/solicitacoes` asks the mirror first and falls back
+to Exati when the mirror has no answer (no wired mirror, or a failed query) —
+so in dev the listing returns real data while Exati's own listing stays empty.
+
+**Schema.** DDL is manual — the app never executes DDL, and the `mysql` client
+lives on the SSH VM, not on a dev laptop:
+
+```bash
+# from Projects/EXATI (scripts also in exati-itg/docs/sql/)
+ssh -i hong_baiyi.pem hong_baiyi@3.88.22.232 \
+    "mysql -h 34.232.210.135 -u ami -p'<password>' ami" \
+    < exati_itg_ticket.sql                      # create
+    # exati_itg_ticket_add_recheck_fields.sql   # ALTER for pre-02/09 tables
+```
+
+---
+
 ## 5. Configuration reference (env-overridable)
 
 | Env var | Default | Meaning |
@@ -176,6 +242,17 @@ When a CIM/TALQ operation ultimately touches the database, this is roughly what 
 | `EXATI_BASE_URL` | `https://iot.exati.com.br/staging` | DEPRECATED Tier 2 staging base (TalqResourceClient only) |
 | `EXATI_AUTH_TYPE` | `none` | `none` \| `bearer` \| `apikey` |
 | `EXATI_AUTH_TOKEN` / `EXATI_AUTH_KEY` / `EXATI_AUTH_HEADER` | — | Credentials for the chosen scheme (spec declares no auth today) |
+| `ITG_ENV` | `dev` | Deployment environment: `dev` \| `qa` \| `prod` (unknown/missing = startup failure) |
+| `ITG_DEV_DB_ACCESS` | `tunnel` | SIP database transport: `tunnel` (app-managed SSH forward) \| `direct` |
+| `ITG_DEV_SSH_HOST` / `_PORT` / `_USER` | `3.88.22.232` / `22` / `hong_baiyi` | SSH VM for the tunnel |
+| `ITG_DEV_SSH_KEY` | `../EXATI/hong_baiyi.pem` | PEM private key (PKCS#1 accepted) |
+| `ITG_DEV_SSH_LOCAL_PORT` | `13306` | Local end of the port-forward |
+| `ITG_DEV_DB_HOST` / `_PORT` | `34.232.210.135` / `3306` | SIP MySQL as seen from the SSH VM (or directly, in `direct` mode) |
+| `ITG_DEV_DB_SCHEMA` / `_USER` | `ami` / `ami` | Mirror schema and user |
+| `ITG_DEV_DB_PASSWORD` | — | **No default on purpose** — never committed; pass at runtime |
+| `ITG_DEV_RECHECK_MINUTES` | `15` | Recheck job period |
+| `ITG_DEV_RECHECK_TERMINAL` | `RESOLVED,CANCELED` | Statuses that stop being re-checked |
+| `ITG_DEV_RECHECK_EXPIRE_DAYS` | `60` | Give-up window: older tickets stop being re-checked |
 | `CIM_BASE_URL` | `http://localhost:18084/ami/cim` | `ami-cim` target (or point at Zuul `:18088`) |
 | `CIM_CONNECT_TIMEOUT_MS` / `CIM_READ_TIMEOUT_MS` | `5000` / `30000` | CIM client timeouts |
 | `SERVER_PORT` | `8080` | HTTP port |
@@ -202,4 +279,6 @@ H2 is in-memory (schema via Flyway, `ddl-auto: none`); no external DB needed to 
 - 🟢 Solicitações client rewritten 2026-08-24 (`ExatiTicketsClient`) against the published apidog docs: create/query/cancel, certifier token-in-path base URL, `client-address` header, mTLS bundle. Old Tier 1 contract removed.
 - 🟡 `TalqResourceClient` (Tier 2 staging) **deprecated** — pending removal.
 - 🟡 Persistence is **H2 in-memory** — nothing is durable across restarts yet.
+- 🟢 Environment layer (`ITG_ENV`) + SIP ticket mirror implemented 2026-09-01/02 (§4b): async upsert into `ami.exati_itg_ticket`, 15-min recheck job, mirror-backed listing. Verified live in dev.
+- 🔴 Exati's ticket **listing returns `total=0`** even right after a successful create — the recheck job therefore syncs nothing yet (open question with Exati; the mirror-backed GET is the workaround).
 - 🟢 CIM passthrough (`/api/v1/cim/**`) is complete and contract-agnostic.
