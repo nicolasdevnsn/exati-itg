@@ -52,9 +52,11 @@ public class SolicitacaoService {
         }
     }
 
+    /** Mirror-first: environments with a wired mirror answer locally, others ask Exati. */
     public TicketQueryResponse query(TicketQuery query) {
         log.info("Querying solicitações: device={} status={} page={} limit={}",
                 query.deviceUuid(), query.status(), query.page(), query.limit());
-        return exatiClient.queryTickets(query);
+        return ticketMirror.query(query)
+                .orElseGet(() -> exatiClient.queryTickets(query));
     }
 }

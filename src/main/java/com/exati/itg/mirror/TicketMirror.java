@@ -2,7 +2,11 @@ package com.exati.itg.mirror;
 
 import com.exati.itg.api.dto.CancelTicketRequest;
 import com.exati.itg.api.dto.CreateTicketRequest;
+import com.exati.itg.api.dto.TicketQuery;
+import com.exati.itg.api.dto.TicketQueryResponse;
 import com.exati.itg.api.dto.TicketResponse;
+
+import java.util.Optional;
 
 /**
  * Environment-specific copy of the tickets submitted to the Exati IoT Hub.
@@ -20,4 +24,11 @@ public interface TicketMirror {
 
     /** Record a cancellation Exati accepted. */
     void recordCancelled(CancelTicketRequest request, TicketResponse response);
+
+    /**
+     * Answer the listing from the mirror, or {@link Optional#empty()} when this
+     * environment's mirror can't (no wired database, or it is unreachable) —
+     * the caller then falls back to querying Exati directly.
+     */
+    Optional<TicketQueryResponse> query(TicketQuery query);
 }

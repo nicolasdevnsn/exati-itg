@@ -2,12 +2,18 @@ package com.exati.itg.mirror;
 
 import com.exati.itg.api.dto.CancelTicketRequest;
 import com.exati.itg.api.dto.CreateTicketRequest;
+import com.exati.itg.api.dto.TicketQuery;
+import com.exati.itg.api.dto.TicketQueryResponse;
 import com.exati.itg.api.dto.TicketResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
@@ -160,6 +166,68 @@ public class SipTicketMirror implements TicketMirror, AutoCloseable {
                 }
             }
         }
+    }
+
+    /** Answer the listing from the mirror; empty on any failure (caller falls back to Exati). */
+    @Override
+    public Optional<TicketQueryResponse> query(TicketQuery query) {
+        try {
+            int limit = query.limit() != null ? query.limit() : 20;
+            int page = query.page() != null ? query.page() : 1;
+
+            StringBuilder where = new StringBuilder(" WHERE 1=1");
+            List<Object> params = new ArrayList<>();
+            if (query.deviceUuid() != null) {
+                where.append(" AND device_uuid = ?");
+                params.add(query.deviceUuid());
+            }
+            if (query.status() != null) {
+                where.append(" AND ticket_status = ?");
+                params.add(query.status().name());
+            }
+            if (query.dateFrom() != null) {
+                where.append(" AND submitted_at >= ?");
+                params.add(query.dateFrom().atStartOfDay());
+            }
+            if (query.dateTo() != null) {
+                // inclusive end date
+                where.append(" AND submitted_at < ?");
+                params.add(query.dateTo().plusDays(1).atStartOfDay());
+            }
+
+            Long total = db.jdbc().sql("SELECT COUNT(*) FROM exati_itg_ticket" + where)
+                    .params(params.toArray())
+                    .query(Long.class).single();
+
+            List<Object> pageParams = new ArrayList<>(params);
+            pageParams.add(limit);
+            pageParams.add((page - 1) * limit);
+            List<TicketQueryResponse.Item> items = db.jdbc().sql("""
+                            SELECT id_external_protocol, id_ticket, device_uuid, ticket_status,
+                                   reported_at, cancel_justification, closed_at, closing_reason
+                              FROM exati_itg_ticket""" + where
+                            + " ORDER BY submitted_at DESC LIMIT ? OFFSET ?")
+                    .params(pageParams.toArray())
+                    .query((rs, i) -> new TicketQueryResponse.Item(
+                            rs.getLong("id_external_protocol"),
+                            rs.getLong("id_ticket"),
+                            rs.getString("device_uuid"),
+                            rs.getString("ticket_status"),
+                            toIso(rs.getTimestamp("reported_at")),
+                            rs.getString("cancel_justification"),
+                            toIso(rs.getTimestamp("closed_at")),
+                            rs.getString("closing_reason")))
+                    .list();
+
+            return Optional.of(new TicketQueryResponse(page, limit, total, items));
+        } catch (Exception e) {
+            log.warn("Mirror query failed, falling back to Exati: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private static String toIso(Timestamp t) {
+        return t == null ? null : t.toLocalDateTime().toString();
     }
 
     private String toJson(CreateTicketRequest request) {

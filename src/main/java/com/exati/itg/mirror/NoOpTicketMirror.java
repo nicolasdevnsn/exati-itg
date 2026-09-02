@@ -2,9 +2,13 @@ package com.exati.itg.mirror;
 
 import com.exati.itg.api.dto.CancelTicketRequest;
 import com.exati.itg.api.dto.CreateTicketRequest;
+import com.exati.itg.api.dto.TicketQuery;
+import com.exati.itg.api.dto.TicketQueryResponse;
 import com.exati.itg.api.dto.TicketResponse;
 import com.exati.itg.config.ItgEnvironment;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Optional;
 
 /**
  * Mirror for environments without an implementation (qa, prod). Intentionally
@@ -26,5 +30,10 @@ public class NoOpTicketMirror implements TicketMirror {
     @Override
     public void recordCancelled(CancelTicketRequest request, TicketResponse response) {
         // no-op
+    }
+
+    @Override
+    public Optional<TicketQueryResponse> query(TicketQuery query) {
+        return Optional.empty();
     }
 }
